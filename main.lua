@@ -1,7 +1,19 @@
+config = {}
+
 function love.load(arrrgs)
 
-  SR = 44100
-  SL = 256
+  table.remove(arg, 1)
+  for i, v in ipairs(arg) do
+    if v:match("^%-%-") then --option
+      config[v:match("^%-%-(.-)$")] = true
+    else --par
+      local o = arg[i-1]:match("^%-%-(.-)$")
+      config[o] = v
+    end
+  end
+
+  SR = tonumber(config.samplerate) or 44100
+  SL = tonumber(config.buffersize) or 256
   SQ = love.audio.newSource(SR,16,1) -- "Queue type"...
   SD = love.sound.newSoundData(SL,SR,16,1) -- Buffer
 
@@ -19,7 +31,7 @@ function love.load(arrrgs)
 
   love.graphics.present()
 
-  notes = {n = 0}
+  notes = {number = 0}
   --[[ TO DO:
   - ADSR (attack (time to peak), decay (time to sustain), sustain (level to sustain), release (time to zero)
   - send single notes events (start-stop), not table of frequencies
@@ -30,77 +42,120 @@ function love.load(arrrgs)
   t = {}
   tn = 0
 
-  keys = {
-  ["1"] = 28,
-  ["2"] = 29,
-  ["3"] = 30,
-  ["4"] = 31,
-  ["5"] = 32,
-  ["6"] = 33,
-  ["7"] = 34,
-  ["8"] = 35,
-  ["9"] = 36,
-  ["0"] = 37,
-  ["-"] = 38,
-  ["="] = 39,
-  ["q"] = 40,
-  ["w"] = 41,
-  ["e"] = 42,
-  ["r"] = 43,
-  ["t"] = 44,
-  ["y"] = 45,
-  ["u"] = 46,
-  ["i"] = 47,
-  ["o"] = 48,
-  ["p"] = 49,
-  ["["] = 50,
-  ["]"] = 51,
-  ["a"] = 52,
-  ["s"] = 53,
-  ["d"] = 54,
-  ["f"] = 55,
-  ["g"] = 56,
-  ["h"] = 57,
-  ["j"] = 58,
-  ["k"] = 59,
-  ["l"] = 60,
-  [";"] = 61,
-  ["'"] = 62,
-  ["\\"] = 63,
-  ["nonusbackslash"] = 64,
-  ["z"] = 65,
-  ["x"] = 66,
-  ["c"] = 67,
-  ["v"] = 68,
-  ["b"] = 69,
-  ["n"] = 70,
-  ["m"] = 71,
-  [","] = 72,
-  ["."] = 73,
-  ["/"] = 74,
-}
-  keys[40] = 'a'
-  keys[41] = 'w'
-  keys[42] = 's'
-  keys[43] = 'e'
-  keys[44] = 'd'
-  keys[45] = 'f'
-  keys[46] = 't'
-  keys[47] = 'g'
-  keys[48] = 'y'
-  keys[49] = 'h'
-  keys[50] = 'u'
-  keys[51] = 'j'
-  keys[52] = 'k'
-  keys[53] = 'o'
-  keys[54] = 'l'
-  keys[55] = 'p'
-  --acc,avg =  0.0, {}
+  attack = tonumber(config.attack) or 0.02
+  decay = tonumber(config.decay) or 0.05
+  sustain = tonumber(config.sustain) or 0.8
+  release = tonumber(config.release) or 0.05
+
+  layouts = {}
+  layouts.openmpt = {
+    ["1"] = 28,
+    ["2"] = 29,
+    ["3"] = 30,
+    ["4"] = 31,
+    ["5"] = 32,
+    ["6"] = 33,
+    ["7"] = 34,
+    ["8"] = 35,
+    ["9"] = 36,
+    ["0"] = 37,
+    ["-"] = 38,
+    ["="] = 39,
+    ["q"] = 40,
+    ["w"] = 41,
+    ["e"] = 42,
+    ["r"] = 43,
+    ["t"] = 44,
+    ["y"] = 45,
+    ["u"] = 46,
+    ["i"] = 47,
+    ["o"] = 48,
+    ["p"] = 49,
+    ["["] = 50,
+    ["]"] = 51,
+    ["a"] = 52,
+    ["s"] = 53,
+    ["d"] = 54,
+    ["f"] = 55,
+    ["g"] = 56,
+    ["h"] = 57,
+    ["j"] = 58,
+    ["k"] = 59,
+    ["l"] = 60,
+    [";"] = 61,
+    ["'"] = 62,
+    ["\\"] = 63,
+    ["nonusbackslash"] = 64,
+    ["z"] = 65,
+    ["x"] = 66,
+    ["c"] = 67,
+    ["v"] = 68,
+    ["b"] = 69,
+    ["n"] = 70,
+    ["m"] = 71,
+    [","] = 72,
+    ["."] = 73,
+    ["/"] = 74,
+  }
+  layouts.piano = {
+    ["q"] = 40,
+    ["2"] = 41,
+    ["w"] = 42,
+    ["3"] = 43,
+    ["e"] = 44,
+    ["r"] = 45,
+    ["5"] = 46,
+    ["t"] = 47,
+    ["6"] = 48,
+    ["y"] = 49,
+    ["7"] = 50,
+    ["u"] = 51,
+    ["i"] = 52,
+    ["9"] = 53,
+    ["o"] = 54,
+    ["0"] = 55,
+    ["p"] = 56,
+    ["["] = 57,
+    ["="] = 58,
+    ["]"] = 59,
+    ["nonusbackslash"] = 52,
+    ["a"] = 53,
+    ["z"] = 54,
+    ["s"] = 55,
+    ["x"] = 56,
+    ["c"] = 57,
+    ["f"] = 58,
+    ["v"] = 59,
+    ["g"] = 60,
+    ["b"] = 61,
+    ["h"] = 62,
+    ["n"] = 63,
+    ["m"] = 64,
+    ["k"] = 65,
+    [","] = 66,
+    ["l"] = 67,
+    ["."] = 68,
+    [";"] = 69,
+    ["\\"] = 70,
+    ["à"] = 71,
+  }
+
+  if not config.layout then
+    keys = layouts.openmpt
+  elseif layouts[config.layout] then
+    keys = layouts[config.layout]
+  else
+    local p, t = pcall(love.filesystem.load, config.layout .. ".lua")
+    if p then 
+      keys = t() --I'm assuming you're not an idiot with that property.
+    else
+      keys = layouts.openmpt
+    end
+  end
 
 end
 
 function love.update(dt)
-  --if not love.keyboard.isDown(unpack(keys)) then channel:push "stop" end
 
 end
 
@@ -113,16 +168,16 @@ function love.keypressed(kk,k)
     --print(f)
     channel:push{
       action = "start",
-      id = notes.n,
+      id = notes.number,
       instrument = instrument,
-      attack = 0.02,
-      decay = 0.1,
-      sustain = 0.5,
-      release = 0.1,
+      attack = attack,
+      decay = decay,
+      sustain = sustain,
+      release = release,
       frequency = f,
     }
-    notes[k] = notes.n
-    notes.n = notes.n + 1
+    notes[k] = notes.number
+    notes.number = notes.number + 1
   elseif k == "f1" then instrument = "sine"
   elseif k == "f2" then instrument = "organ"--]]
   end

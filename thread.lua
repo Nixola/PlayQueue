@@ -10,10 +10,13 @@ SL = channel:demand()
 source = channel:demand()
 buffer = channel:demand()
 
+local tau = 2 * math.pi
+local t = 1/SR
+
 local sin = math.sin
 local instrs = {
-    sine = function(p, v) return sin(p*v)*.95 end,
-    organ = function(p, v) local pv = p*v; return (sin(pv)+sin(pv*2)+sin(pv*4)+sin(pv*8)+sin(pv/2))/5.25 end
+    sine = function(p, v) return sin(p*v*tau)*.95 end,
+    organ = function(p, v) local pv = p*v*tau; return (sin(pv)+sin(pv*2)+sin(pv*4)+sin(pv*8)+sin(pv/2))/5.25 end
 }
 
 notes = {}
@@ -28,7 +31,8 @@ notes = {}
       - release [number]: seconds from key release (sustain volume) to 0 volume
       - frequency [number]: note frequency. not much to say here.
       --time [number]: time elapsed since last state change
-      --ttime [number]: time elapsed since note start (for phase)
+      --phase [number]: phase
+      --ttime [number]: time elapsed since note start
       --state [string]: current state (attack, decay, sustain, release)
      release:
       - id [number/string]: a unique identifier for the note.
@@ -38,8 +42,7 @@ notes = {}
 
 --p, d, t = 0.0, (2*math.pi)/SR, 1/SR
 
-local pi2 = 2 * math.pi
-local t = 1/SR
+
 
 while true do
   if source:isQueueable() then
@@ -53,6 +56,7 @@ while true do
 
         notes[id] = notes[id] and error("Starting note already exists") or event
         event.time = 0
+        event.phase = 0
         event.ttime = 0
         event.state = "attack"
       elseif action == "release" then
@@ -74,6 +78,7 @@ while true do
       for i, note in pairs(notes) do
         local time = note.time + t
         note.ttime = note.ttime + t
+        --note.phase = note.phase + t
 
         local a
         if note.state == "attack" then
@@ -110,9 +115,14 @@ while true do
             notesN = notesN + 1
           end
         end
+        local n = note.frequency
 
-        local f = 440 * (2^(1/12))^(note.frequency-49)
-        sample = sample + instrs[note.instrument](note.ttime * pi2, f) * a
+        local f1 = 440 * 2^((n - 49) / 12)
+        local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
+        note.phase = note.phase + t * f2 / f1
+        --io.write(f1, "\t", f2, "\n")
+        sample = sample + instrs[note.instrument](note.phase, f1) * a + instrs[note.instrument]
+        --print(sample)
 
         note.time = time
       end
@@ -126,26 +136,30 @@ while true do
 end
 
 --[[
-    if instrs[f2] then
-        instr = instrs[f2]
-    elseif not stopped then
-        if f2 then
-          f = f2
-        end
-
-        for i=0,SL-1 do
-          p = p + d
-          local s = 0
-          local t = 0
-          for i, v in pairs(f) do
-            s = s + instr(p, v)
-            t = t + 1
-          end
-          buffer:setSample(i, s/t)
-        end
-        source:queueData(buffer)
-        source:play()
-    end
+local sin = function(freqtable,ip)
+  local phase, increment = (ip or 0), (2*math.pi)/8000/2
+  return function(dt)
+    phase = phase + increment
+    local x = phase * freq
+    return math.sin(phase*freq)
   end
-  love.timer.sleep(0.001)
-end--]]
+end]]
+
+
+--[[
+local sin = function(freqtable,ip)
+  local phase, increment = (ip or 0), (2*math.pi)/8000/2
+  local time = 0
+  return function(dt)
+    dt = 1/8000 * 150 / 1.25
+    time = time + dt / (2*math.pi*4)
+    phase = phase + increment
+    local melody = (time / 1.25) * 2
+    local freq = freqtable[(math.floor(melody) % 128) + 1]
+    —print(type(freqtable))
+    —print(math.floor(melody) % 128)
+    local x = phase * freq
+    —return x < 0 and -1 or 1
+    return math.sin(phase*freq)
+  end
+end]]

@@ -111,7 +111,8 @@ while true do
           end
         end
 
-        sample = sample + instrs[note.instrument](note.ttime * pi2, note.frequency) * a
+        local f = 440 * (2^(1/12))^(note.frequency-49)
+        sample = sample + instrs[note.instrument](note.ttime * pi2, f) * a
 
         note.time = time
       end

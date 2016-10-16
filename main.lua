@@ -161,7 +161,6 @@ end
 
 function love.keypressed(kk,k)
   if keys[k] then
-    local f = 440 * (2^(1/12))^(keys[k]-49)
 
     --t[k] = 440 * (2^(1/12))^(keys[k]-49)
     --tn = tn + 1
@@ -174,7 +173,7 @@ function love.keypressed(kk,k)
       decay = decay,
       sustain = sustain,
       release = release,
-      frequency = f,
+      frequency = keys[k],
     }
     notes[k] = notes.number
     notes.number = notes.number + 1

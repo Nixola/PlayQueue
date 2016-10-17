@@ -121,7 +121,7 @@ while true do
         local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
         note.phase = note.phase + t * f2 / f1
         --io.write(f1, "\t", f2, "\n")
-        sample = sample + instrs[note.instrument](note.phase, f1) * a + instrs[note.instrument]
+        sample = sample + instrs[note.instrument](note.phase, f1) * a
         --print(sample)
 
         note.time = time

@@ -3,19 +3,24 @@ local channel = ...
 table.merge = function(to, from)
   to = to or {}
   from = from or {}
+
+  local new = {}
+  for i, v in pairs(to) do
+    new[i] = v
+  end
   local cache = {}
   ---[[
   for i = 1, #from do
-    to[#to + 1] = from[i]
+    new[#new + 1] = from[i]
     cache[i] = true
     --from[i] = nil
   end--]]
   for i, v in pairs(from) do
     if not cache[i] then
-      to[i] = v
+      new[i] = v
     end
   end
-  return to
+  return new
 end
 
 require "love.sound"

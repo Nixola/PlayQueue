@@ -180,6 +180,7 @@ function love.keypressed(kk,k)
     notes.number = notes.number + 1
   elseif k == "f1" then instrument = "sine"
   elseif k == "f2" then instrument = "organ"--]]
+  elseif k == "f3" then instrument = "flute"
   end
 end
 

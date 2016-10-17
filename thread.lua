@@ -45,7 +45,7 @@ notes = {}
 
 
 while true do
-  if source:isQueueable() then
+  if source:getFreeBufferCount() > 0 then
 
     local event = channel:pop()
     if event then
@@ -129,7 +129,7 @@ while true do
 
       buffer:setSample(i, sample / 4)--notesN)
     end
-    source:queueData(buffer)
+    source:queue(buffer)
     source:play()
   end
   love.timer.sleep(0.001)

@@ -14,7 +14,7 @@ function love.load(arrrgs)
 
   SR = tonumber(config.samplerate) or 44100
   SL = tonumber(config.buffersize) or 256
-  SQ = love.audio.newSource(SR,16,1) -- "Queue type"...
+  SQ = love.audio.newQueueableSource(SR,16,1) -- "Queue type"...
   SD = love.sound.newSoundData(SL,SR,16,1) -- Buffer
 
   thread = love.thread.newThread("thread.lua")

@@ -17,7 +17,7 @@ local sin = math.sin
 local instrs = {
     sine = {voices = {{amplitude = 1, keyshift = 0}}, func = function(p, v) return sin(p*v*tau) end},
     flute = {voices = {amplitude = 1, keyshift = 0}, {amplitude = 1, keyshift = 0.5}, func = function(p, v) return sin(p*v*tau) end},
-    organ = {voices = {{amplitude = 1, keyshift = -12},{amplitude = 1, keyshift = 0},{amplitude = 1, keyshift = 12},{amplitude = 1, keyshift = 24},{amplitude = 1, keyshift = 36}}, func = function(p, v) local pv = p*v*tau; return sin(pv) end}
+    organ = {voices = {{amplitude = 0.3, keyshift = -12},{amplitude = 0.3, keyshift = 0},{amplitude = 0.3, keyshift = 12},{amplitude = 0.3, keyshift = 24},{amplitude = 0.3, keyshift = 36}}, func = function(p, v) local pv = p*v*tau; return sin(pv) end}
 }
 
 notes = {}

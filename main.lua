@@ -174,6 +174,7 @@ function love.keypressed(kk,k)
       sustain = sustain,
       release = release,
       frequency = keys[k],
+      amplitude = 1,
     }
     notes[k] = notes.number
     notes.number = notes.number + 1

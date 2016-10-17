@@ -1,5 +1,18 @@
 local channel = ...
 
+table.merge = function(to, from)
+  to = to or {}
+  from = from or {}
+  for i = 1, #from do
+    to[#to + 1] = from[i]
+    from[i] = nil
+  end
+  for i, v in pairs(from) do
+    to[i] = v
+  end
+  return to
+end
+
 require "love.sound"
 require "love.audio"
 require "love.timer"
@@ -13,11 +26,41 @@ buffer = channel:demand()
 local tau = 2 * math.pi
 local t = 1/SR
 
+
 local sin = math.sin
 local instrs = {
-    sine = {voices = {{amplitude = 1, keyshift = 0}}, func = function(p, v) return sin(p*v*tau) end},
-    flute = {voices = {{amplitude = 0.7, keyshift = 0}, {amplitude = 0.7, keyshift = 12}}, func = function(p, v) return sin(p*v*tau) end},
-    organ = {voices = {{amplitude = 0.3, keyshift = -12},{amplitude = 0.3, keyshift = 0},{amplitude = 0.3, keyshift = 12},{amplitude = 0.3, keyshift = 24},{amplitude = 0.3, keyshift = 36}}, func = function(p, v) local pv = p*v*tau; return sin(pv) end}
+    sine = {
+      voices = {
+        {amplitude = 1, keyshift = 0, effects = {{type = "vibrato", 6, 1/6}} }
+      }, 
+      func = function(p, v) return sin(p*v*tau) end
+    },
+
+    flute = {
+      voices = {
+        {amplitude = 0.7, keyshift = 0, effects = {{type = "vibrato", 6, 1/6}} }, 
+        {amplitude = 0.7, keyshift = 12, effects = {{type = "vibrato", 6, 1/6}} }
+      }, 
+      func = function(p, v) return sin(p*v*tau) end
+    },
+
+    organ = {
+      voices = {
+        {amplitude = 0.3, keyshift = -12},
+        {amplitude = 0.3, keyshift = 0},
+        {amplitude = 0.3, keyshift = 12},
+        {amplitude = 0.3, keyshift = 24},
+        {amplitude = 0.3, keyshift = 36}
+      }, 
+      func = function(p, v) return sin(p*v*tau) end
+    }
+}
+
+local effects = {
+  vibrato = function(state, speed, depth)
+    local ratio = 2^(sin(tau * speed * state.ttime) * depth / 12 )
+    return {phaseShift = ratio}
+  end,
 }
 
 notes = {}
@@ -74,6 +117,7 @@ while true do
           note.state = "attack"
           note.amplitude = event.amplitude * voice.amplitude
           note.func = instrs[event.instrument].func
+          note.effects = table.merge(voice.effects, event.effects)
           IDs[id][i] = note
           notes[#notes + 1] = note
         end
@@ -140,10 +184,21 @@ while true do
         end
         local n = note.frequency
 
+        local phaseShift = 1
+
+        local effs = {}
+        for i, v in ipairs(note.effects) do
+          effs[i] = effects[v.type](note, unpack(v))
+          a = a * (effs[i].amplitude or 1)
+          n = n * (effs[i].keyShift or 1)
+          phaseShift = phaseShift * (effs[i].phaseShift or 1)
+        end
+
+
         local f1 = 440 * 2^((n - 49) / 12)
         --local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
-        local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
-        note.phase = note.phase + t * ratio -- f2 / f1
+        --local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
+        note.phase = note.phase + t * phaseShift -- f2 / f1
         --io.write(f1, "\t", f2, "\n")
         sample = sample + note.func(note.phase, f1) * a * note.amplitude--instrs[note.instrument](note.phase, f1) * a
         --print(sample)

@@ -15,11 +15,13 @@ local t = 1/SR
 
 local sin = math.sin
 local instrs = {
-    sine = function(p, v) return sin(p*v*tau)*.95 end,
-    organ = function(p, v) local pv = p*v*tau; return (sin(pv)+sin(pv*2)+sin(pv*4)+sin(pv*8)+sin(pv/2))/5.25 end
+    sine = {voices = {{amplitude = 1, keyshift = 0}}, func = function(p, v) return sin(p*v*tau) end},
+    flute = {voices = {amplitude = 1, keyshift = 0}, {amplitude = 1, keyshift = 0.5}, func = function(p, v) return sin(p*v*tau) end},
+    organ = {voices = {{amplitude = 1, keyshift = -12},{amplitude = 1, keyshift = 0},{amplitude = 1, keyshift = 12},{amplitude = 1, keyshift = 24},{amplitude = 1, keyshift = 36}}, func = function(p, v) local pv = p*v*tau; return sin(pv) end}
 }
 
 notes = {}
+IDs = {}
 --[=[ note format:
     - action [string]: either "start" or "release".
      start:
@@ -30,6 +32,8 @@ notes = {}
       - sustain [number[0-1]]: volume level to (hehe) sustain
       - release [number]: seconds from key release (sustain volume) to 0 volume
       - frequency [number]: note frequency. not much to say here.
+      - amplitude [number[0-1]]: note amplitude
+      --keyshift[number]: number of semitones the note will be shifted up
       --time [number]: time elapsed since last state change
       --phase [number]: phase
       --ttime [number]: time elapsed since note start
@@ -54,17 +58,30 @@ while true do
       if action == "start" then -- start first; gotta go fast
         local id = event.id
 
-        notes[id] = notes[id] and error("Starting note already exists") or event
-        event.time = 0
-        event.phase = 0
-        event.ttime = 0
-        event.state = "attack"
+        IDs[id] = IDs[id] and error("Starting note already exists") or {}
+
+        for i, voice in ipairs(instrs[event.instrument].voices) do
+          local note = {}
+          note.id = id
+          note.time = 0
+          note.phase = 0
+          note.ttime = 0
+          note.attack = event.attack
+          note.decay = event.decay
+          note.sustain = event.sustain
+          note.release = event.release
+          note.frequency = event.frequency + voice.keyshift
+          note.state = "attack"
+          note.amplitude = event.amplitude * voice.amplitude
+          note.func = instrs[event.instrument].func
+          IDs[id][i] = note
+          notes[#notes + 1] = note
+        end
       elseif action == "release" then
-        local id = event.id
-        local note = notes[id]
-        if not note then
+        if not IDs[event.id] then
           error("Released note doesn't exist")
-        else
+        end
+        for i, note in pairs(IDs[event.id]) do
           note.time = 0
           note.state = "release"
         end
@@ -107,7 +124,13 @@ while true do
         end
         if note.state == "release" then
           if time > note.release then
-            notes[note.id] = nil
+            for ii, vv in pairs(IDs[note.id]) do
+              if vv == note then
+                IDs[note.id][ii] = nil
+                break
+              end
+            end
+            notes[i] = nil
             a = 0
           else
             local tt = time / note.release
@@ -122,7 +145,7 @@ while true do
         local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
         note.phase = note.phase + t * ratio -- f2 / f1
         --io.write(f1, "\t", f2, "\n")
-        sample = sample + instrs[note.instrument](note.phase, f1) * a
+        sample = sample + note.func(note.phase, f1) * a --instrs[note.instrument](note.phase, f1) * a
         --print(sample)
 
         note.time = time

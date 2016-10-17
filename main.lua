@@ -155,9 +155,16 @@ function love.load(arrrgs)
 
 end
 
+
 function love.update(dt)
 
 end
+
+
+function love.draw()
+
+end
+
 
 function love.keypressed(kk,k)
   if keys[k] then

@@ -118,8 +118,9 @@ while true do
         local n = note.frequency
 
         local f1 = 440 * 2^((n - 49) / 12)
-        local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
-        note.phase = note.phase + t * f2 / f1
+        --local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
+        local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
+        note.phase = note.phase + t * ratio -- f2 / f1
         --io.write(f1, "\t", f2, "\n")
         sample = sample + instrs[note.instrument](note.phase, f1) * a
         --print(sample)

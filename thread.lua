@@ -38,45 +38,36 @@ local t = 1/SR
 
 
 local sin = math.sin
+
+local waveforms = {
+  sine = function(p, v) return sin(p*v*tau) end,
+  sawtooth = function(p, v) return p * v % 2 - 1 end,
+  square = function(p, v) return p * v % 2 > 1 and 1 or -1 end,
+}
 local instrs = {
   sine = {
-    voices = {
-      {amplitude = 1, keyshift = 0, effects = {{type = "vibrato", 6, 1/6}} }
-    }, 
-    func = function(p, v) return sin(p*v*tau) end
+    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
   },
 
   flute = {
-    voices = {
-      {amplitude = 0.7, keyshift = 0, effects = {{type = "vibrato", 6, 1/6}} }, 
-      {amplitude = 0.7, keyshift = 12, effects = {{type = "vibrato", 6, 1/6}} }
-    }, 
-    func = function(p, v) return sin(p*v*tau) end
+    {amplitude = 0.7, keyshift = 0,  waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }, 
+    {amplitude = 0.7, keyshift = 12, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
   },
 
   organ = {
-    voices = {
-      {amplitude = 0.3, keyshift = -12},
-      {amplitude = 0.3, keyshift = 0},
-      {amplitude = 0.3, keyshift = 12},
-      {amplitude = 0.3, keyshift = 24},
-      {amplitude = 0.3, keyshift = 36}
-    }, 
-    func = function(p, v) return sin(p*v*tau) end
+    {amplitude = 0.3, keyshift = -12, waveform = "sine"},
+    {amplitude = 0.3, keyshift = 0,   waveform = "sine"},
+    {amplitude = 0.3, keyshift = 12,  waveform = "sine"},
+    {amplitude = 0.3, keyshift = 24,  waveform = "sine"},
+    {amplitude = 0.3, keyshift = 36,  waveform = "sine"}
   },
 
   saw = {
-    voices = {
-      {amplitude = 1, keyshift = 0},
-    },
-    func = function(p, v) return p*v%2-1 end
+    {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
   },
 
   square = {
-    voices = {
-      {amplitude = 1, keyshift = 0},
-    },
-    func = function(p, v) return p*v%2-1 > 0 and 1 or -1 end
+    {amplitude = 1, keyshift = 0, waveform = "square"},
   }
 }
 
@@ -127,7 +118,7 @@ while true do
 
         IDs[id] = IDs[id] and error("Starting note already exists") or {}
 
-        for i, voice in ipairs(instrs[event.instrument].voices) do
+        for i, voice in ipairs(instrs[event.instrument]) do
           local note = {}
           note.id = id
           note.time = 0
@@ -140,7 +131,7 @@ while true do
           note.frequency = event.frequency + voice.keyshift
           note.state = "attack"
           note.amplitude = event.amplitude * voice.amplitude
-          note.func = instrs[event.instrument].func
+          note.func = waveforms[voice.waveform] --instrs[event.instrument].func
           note.effects = table.merge(voice.effects, event.effects)
           IDs[id][i] = note
           notes[#notes + 1] = note

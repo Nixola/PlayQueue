@@ -15,8 +15,9 @@ local t = 1/SR
 
 local sin = math.sin
 local instrs = {
-    sine = function(p, v) return sin(p*v*tau)*.95 end,
-    organ = function(p, v) local pv = p*v*tau; return (sin(pv)+sin(pv*2)+sin(pv*4)+sin(pv*8)+sin(pv/2))/5.25 end
+    sine = {voices = {{a = 1, keyshift = 0}}, func = function(p, v) return sin(p*v*tau) end},
+    flute = {voices = {a = 1, keyshoft = 0}, {a = 1, keyshift = 0.5}, func = function(p, v) return sin(p*v*tau) end},
+    organ = {voices = {{a = 1, keyshift = -12},{a = 1, keyshift = 0},{a = 1, keyshift = +12},{a = 1, keyshift = +24},{a = 1, keyshift = +36}}, func = function(p, v) local pv = p*v*tau; return sin(pv) end}
 }
 
 notes = {}

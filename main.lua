@@ -153,6 +153,33 @@ function love.load(arrrgs)
     end
   end
 
+  --draw stuff
+  lightUp = {6/16, 6/16, 6/16}
+  lightDown={12/16, 12/16, 12/16}
+  darkUp  = {1/16, 1/16, 1/16}
+  darkDown= {8/16, 8/16, 8/16}
+  palette = love.graphics.newCanvas(256, 1)
+  palette:setFilter("nearest", "nearest")
+  shader = love.graphics.newShader [[
+    extern Image palette;
+
+    vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 pixel_coords) { 
+      vec4 tex_color = texture2D(texture, texture_coords);
+      vec2 index = vec2(tex_color.r, 0); //get color based on red
+      return texture2D(palette, index);
+    }]]
+
+  keyImg = love.graphics.newImage("keyboard.png")
+
+  shader:send("palette", palette)
+
+  love.graphics.setCanvas(palette)
+    love.graphics.setColor(lightUp)
+    love.graphics.rectangle("fill", 1.5, 0.5, 127, 1) -- we want the first pixel empty
+    love.graphics.setColor(darkUp)
+    love.graphics.rectangle("fill", 128.5, 0.5, 128, 1)
+  love.graphics.setCanvas()
+
 end
 
 
@@ -162,6 +189,13 @@ end
 
 
 function love.draw()
+
+  love.graphics.setColor(1, 1, 1)
+  --love.graphics.draw(palette, 0, 0, 0, 3, 3)
+  love.graphics.setShader(shader)
+    love.graphics.draw(keyImg, 86, 200)
+  love.graphics.setShader()
+  
 
 end
 
@@ -183,6 +217,13 @@ function love.keypressed(kk,k)
       frequency = keys[k],
       amplitude = 1,
     }
+
+    love.graphics.setCanvas(palette)
+      love.graphics.setColor(lightDown)
+      love.graphics.rectangle("fill", keys[k] + 1 - 0.5, 0.5, 1, 1)
+      love.graphics.setColor(darkDown)
+      love.graphics.rectangle("fill", keys[k] + 1 + 127.5, 0.5, 1, 1)
+    love.graphics.setCanvas()
     notes[k] = notes.number
     notes.number = notes.number + 1
   elseif k == "f1" then instrument = "sine"
@@ -201,6 +242,13 @@ function love.keyreleased(kk,k)
       action = "release",
       id = notes[k]
     }
+
+    love.graphics.setCanvas(palette)
+      love.graphics.setColor(lightUp)
+      love.graphics.rectangle("fill", keys[k] + 1 - 0.5, 0.5, 1, 1)
+      love.graphics.setColor(darkUp)
+      love.graphics.rectangle("fill", keys[k] + 1 + 127.5, 0.5, 1, 1)
+    love.graphics.setCanvas()
     notes[k] = nil
   end
 end

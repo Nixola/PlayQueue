@@ -210,6 +210,12 @@ function love.run()
   if love.timer then love.timer.step() end
  
   local dt = 0
+
+  local tr = 1/60
+  local fr = 1/60
+
+  local ua = 0
+  local da = 0
  
   -- Main loop time.
   while true do
@@ -227,21 +233,27 @@ function love.run()
     end
  
     -- Update dt, as we'll be passing it to update
-    if love.timer then
-      love.timer.step()
-      dt = love.timer.getDelta()
-    end
+    love.timer.step()
+    dt = love.timer.getDelta()
+
+    ua = ua + dt
+    da = da + dt
  
     -- Call update and draw
-    if love.update then love.update(dt) end -- will pass 0 if love.timer is disabled
+    if love.update and ua > tr then 
+      love.update(dt)
+      ua = ua % tr
+    end -- will pass 0 if love.timer is disabled
  
-    if love.graphics and love.graphics.isActive() then
+    if da > fr and love.graphics and love.graphics.isActive() then
       love.graphics.clear(love.graphics.getBackgroundColor())
       love.graphics.origin()
       if love.draw then love.draw() end
+      love.graphics.present()
+      da = da % fr
     end
  
-    if love.timer then love.timer.sleep(0.001) end
+    love.timer.sleep(0.001)
   end
  
 end

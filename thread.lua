@@ -70,6 +70,13 @@ local instrs = {
       {amplitude = 1, keyshift = 0},
     },
     func = function(p, v) return p*v%2-1 end
+  },
+
+  square = {
+    voices = {
+      {amplitude = 1, keyshift = 0},
+    },
+    func = function(p, v) return p*v%2-1 > 0 and 1 or -1 end
   }
 }
 

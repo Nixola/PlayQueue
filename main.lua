@@ -230,6 +230,7 @@ function love.keypressed(kk,k)
   elseif k == "f2" then instrument = "organ"--]]
   elseif k == "f3" then instrument = "flute"
   elseif k == "f4" then instrument = "saw"
+  elseif k == "f5" then instrument = "square"
   end
 end
 

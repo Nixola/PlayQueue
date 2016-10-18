@@ -72,8 +72,9 @@ local instrs = {
 }
 
 local effects = {
-  vibrato = function(state, speed, depth)
-    local ratio = 2^(sin(tau * speed * state.ttime) * depth / 12 )
+  vibrato = function(state, speed, depth, waveform)
+    waveform = waveform or "sine"
+    local ratio = 2^(waveforms[waveform](speed, state.ttime) * depth / 12 )
     return {phaseShift = ratio}
   end,
 }

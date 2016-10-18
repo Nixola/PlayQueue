@@ -55,11 +55,11 @@ local instrs = {
   },
 
   organ = {
-    {amplitude = 0.3, keyshift = -12, waveform = "sine"},
-    {amplitude = 0.3, keyshift = 0,   waveform = "sine"},
-    {amplitude = 0.3, keyshift = 12,  waveform = "sine"},
-    {amplitude = 0.3, keyshift = 24,  waveform = "sine"},
-    {amplitude = 0.3, keyshift = 36,  waveform = "sine"}
+    {amplitude = 0.4, keyshift = -12, waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 0,   waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 12,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 24,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    --{amplitude = 0.3, keyshift = 36,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} }
   },
 
   saw = {

@@ -1,6 +1,6 @@
 local channel = ...
 
-table.merge = function(to, from)
+table.merge = function(to, from) --doubles as shallow clone too!
   to = to or {}
   from = from or {}
 
@@ -23,6 +23,12 @@ table.merge = function(to, from)
   return new
 end
 
+table.clone = function(t)
+  return table.merge({}, t)
+end
+
+
+
 require "love.sound"
 require "love.audio"
 require "love.timer"
@@ -39,10 +45,37 @@ local t = 1/SR
 
 local sin = math.sin
 
+local function minkowskiQM(x)
+  local p = math.floor(x)
+  local q,r,s,m,n,d,y = 1, p + 1, 1, 0, 0, 1.0, p
+  -- out of range: ?(x) =~ x
+  if x < p or ((p < 0 and r > 0) or (p >= 0 and r <= 0)) then return x end
+  while true do
+    -- invariants: q*r-p*s==1 and p/q <= x and x < r/s
+    d = d / 2
+    -- reached max possible precision
+    if y + d == y then break end
+    m = p + r
+    -- sum overflowed
+    if ((m < 0 and p >= 0) or (m >= 0 and p < 0)) then break end
+    n = q + s
+    -- sum overflowed
+    if n < 0 then break end
+    if x < m / n then r = m; s = n else y = y + d; p = m; q = n end
+  end
+  -- final round-off
+  return y + d
+end
+
+local function expow(x) return x > 0.0 and x^x or 1.0 end
+
 local waveforms = {
   sine = function(p, v) return sin(p*v*tau) end,
   sawtooth = function(p, v) return p * v % 2 - 1 end,
   square = function(p, v) return p * v % 2 > 1 and 1 or -1 end,
+  minkQM = function(p, v) return (minkowskiQM(p*v)-p*v) * 7 end,
+  expow = function(p, v) return (expow((p*v) % 1.0)-0.69)*3 end,
+  cantor = require "waves.cantor",
 }
 local instrs = {
   sine = {
@@ -68,16 +101,75 @@ local instrs = {
 
   square = {
     {amplitude = 1, keyshift = 0, waveform = "square"},
+  },
+
+  double = {
+    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },
+    {amplitude = 1, keyshift = 0.005, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
+  },
+
+  minkQM = {
+    {amplitude = 1, keyshift = 0, waveform = "minkQM", effects = {{type = "vibrato", 6, 1/8}, } },
+  },
+
+  minkQM1 = {
+  	{amplitude = 1, keyshift = 0, waveform = "minkQM"},
+  },
+
+  expow = {
+    {amplitude = 1, keyshift = 0, waveform = "expow"},
+  },
+
+  cantor = {
+    {amplitude = 1, keyshift = 0, waveform = "cantor"}
   }
 }
 
-local effects = {
-  vibrato = function(state, speed, depth, waveform)
-    waveform = waveform or "sine"
-    local ratio = 2^(waveforms[waveform](speed, state.ttime) * depth / 12 )
-    return {phaseShift = ratio}
-  end,
+local effects
+      effects = {
+  vibrato = {
+    init = nil, --explicitly nil as example
+    continuous = function(state, speed, depth, waveform)
+      waveform = waveform or "sine"
+      local ratio = 2^(waveforms[waveform](speed, state.ttime) * depth / 12 )
+      return {phaseShift = ratio}
+    end
+  },
+  echo = {
+    init = function(note, delay, amount, depth) --don't even know if this will work
+      delay = delay or 0.100 --seconds, needs testing
+      amplitude = amplitude or 0.5 --needs testing
+      depth = depth or math.ceil(math.log(amplitude, depth))
+      local t = {}
+      for i = 1, depth do
+        t[i] = table.clone(note)
+        t[i].delay = delay * i
+        t[i].amplitude = t[i].amplitude * amplitude ^ i
+      end
+      return t
+    end
+  },
+  flanger = {
+    init = function(note, shift)
+      shift = shift or 0.1
+      local t = {}
+      note.amplitude = note.amplitude / 2
+      t[1] = table.clone(note)
+      t[1].frequency = t[1].frequency + shift
+      return t
+    end
+  },
+  chorus = {
+    init = function(note, shift)
+      shift = shift or 0.1
+      local n1 = effects.flanger.init(note, shift)[1]
+      note.amplitude = note.amplitude * 2
+      local n2 = effects.flanger.init(note, -shift)[1]
+      return {n1, n2}
+    end
+  }
 }
+
 
 notes = {}
 IDs = {}
@@ -105,6 +197,12 @@ IDs = {}
 
 --p, d, t = 0.0, (2*math.pi)/SR, 1/SR
 
+local addNote = function(note, id)
+  note.state = note.delay > 0 and "delay" or "attack"
+  IDs[id][#IDs[id] + 1] = note
+  notes[#notes + 1] = note
+end
+
 
 
 while true do
@@ -129,13 +227,30 @@ while true do
           note.decay = event.decay
           note.sustain = event.sustain
           note.release = event.release
+          note.duration = event.duration
+          note.delay = event.delay or 0
           note.frequency = event.frequency + voice.keyshift
-          note.state = "attack"
           note.amplitude = event.amplitude * voice.amplitude
           note.func = waveforms[voice.waveform] --instrs[event.instrument].func
           note.effects = table.merge(voice.effects, event.effects)
-          IDs[id][i] = note
-          notes[#notes + 1] = note
+          local startEffects = {}
+          for i = #note.effects, 1, -1 do
+            local v = note.effects[i]
+            if effects[v.type].init then
+              startEffects[#startEffects + 1] = v
+            end
+            if not effects[v.type].continuous then
+              table.remove(note.effects, i)
+            end
+          end
+
+          for i, v in ipairs(startEffects) do
+            for i, v in ipairs(effects[v.type].init(note, unpack(v))) do
+              addNote(v, id)
+            end
+          end
+
+          addNote(note, id)
         end
       elseif action == "release" then
         if not IDs[event.id] then
@@ -143,7 +258,12 @@ while true do
         end
         for i, note in pairs(IDs[event.id]) do
           note.time = 0
-          note.state = "release"
+          if note.delay == 0 then
+          	note.state = "release"
+          	note.sustain = note.a
+          	note.time = 0
+          end
+          note.duration = note.ttime + note.delay
         end
       end
     end
@@ -158,6 +278,14 @@ while true do
         --note.phase = note.phase + t
 
         local a
+        if note.state == "delay" then
+          if time > note.delay then
+            note.state = "attack"
+            time = 0
+          else
+            a = 0
+          end
+        end
         if note.state == "attack" then
           if time > note.attack then
             note.state = "decay"
@@ -179,6 +307,10 @@ while true do
           end
         end
         if note.state == "sustain" then
+          if note.duration and note.ttime > note.duration then
+            note.state = "release"
+            note.time = 0
+          end
           a = note.sustain
           notesN = notesN + 1
         end
@@ -198,13 +330,15 @@ while true do
             notesN = notesN + 1
           end
         end
+        note.a = a
+
         local n = note.frequency
 
         local phaseShift = 1
 
         local effs = {}
         for i, v in ipairs(note.effects) do
-          effs[i] = effects[v.type](note, unpack(v))
+          effs[i] = effects[v.type].continuous(note, unpack(v))
           a = a * (effs[i].amplitude or 1)
           n = n * (effs[i].keyShift or 1)
           phaseShift = phaseShift * (effs[i].phaseShift or 1)

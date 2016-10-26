@@ -42,10 +42,27 @@ function love.load(arrrgs)
   t = {}
   tn = 0
 
-  attack = tonumber(config.attack) or 0.02
-  decay = tonumber(config.decay) or 0.05
-  sustain = tonumber(config.sustain) or 0.8
-  release = tonumber(config.release) or 0.05
+  config.attack = tonumber(config.attack) or 0.02
+  config.decay = tonumber(config.decay) or 0.05
+  config.sustain = tonumber(config.sustain) or 0.8
+  config.release = tonumber(config.release) or 0.05
+  config.duration = tonumber(config.duration)
+
+  attack = config.attack
+  decay = config.decay
+  sustain = config.sustain
+  release = config.release
+  duration = config.duration
+
+  instruments = {
+    {name = "sine"},
+    {name = "organ"},
+    {name = "flute"},
+    {name = "saw"},
+    {name = "square"},
+    {name = "minkQM", attack = 0.3},
+    {name = "minkQM1", attack = 0, decay = 0.15, sustain = 0.2, duration = 0}
+  }
 
   layouts = {}
   layouts.openmpt = {
@@ -214,6 +231,7 @@ function love.keypressed(kk,k)
       decay = decay,
       sustain = sustain,
       release = release,
+      duration = duration,
       frequency = keys[k],
       amplitude = 1,
     }
@@ -226,12 +244,28 @@ function love.keypressed(kk,k)
     love.graphics.setCanvas()
     notes[k] = notes.number
     notes.number = notes.number + 1
+  elseif k:match("f[0-9]+") then
+    local n = tonumber(k:match("f([0-9]+)"))
+    if instruments[n] then
+      instrument = instruments[n].name
+      attack = instruments[n].attack or config.attack
+      decay = instruments[n].decay or config.decay
+      sustain = instruments[n].sustain or config.sustain
+      release = instruments[n].release or config.release
+      duration = instruments[n].duration or config.duration
+    end
+  end
+  --[[
   elseif k == "f1" then instrument = "sine"
-  elseif k == "f2" then instrument = "organ"--]]
+  elseif k == "f2" then instrument = "organ"
   elseif k == "f3" then instrument = "flute"
   elseif k == "f4" then instrument = "saw"
   elseif k == "f5" then instrument = "square"
-  end
+  elseif k == "f6" then instrument = "double"
+  elseif k == "f7" then instrument = "minkQM"
+  elseif k == "f8" then instrument = "expow"
+  elseif k == "f9" then instrument = "cantor"
+  end--]]
 end
 
 function love.keyreleased(kk,k)

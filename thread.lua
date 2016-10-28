@@ -27,8 +27,6 @@ table.clone = function(t)
   return table.merge({}, t)
 end
 
-
-
 require "love.sound"
 require "love.audio"
 require "love.timer"
@@ -39,44 +37,34 @@ SL = channel:demand()
 source = channel:demand()
 buffer = channel:demand()
 
-local tau = 2 * math.pi
-local t = 1/SR
+local sampleLength = 1 / SR
 
 
-local sin = math.sin
-
-local function minkowskiQM(x)
-  local p = math.floor(x)
-  local q,r,s,m,n,d,y = 1, p + 1, 1, 0, 0, 1.0, p
-  -- out of range: ?(x) =~ x
-  if x < p or ((p < 0 and r > 0) or (p >= 0 and r <= 0)) then return x end
-  while true do
-    -- invariants: q*r-p*s==1 and p/q <= x and x < r/s
-    d = d / 2
-    -- reached max possible precision
-    if y + d == y then break end
-    m = p + r
-    -- sum overflowed
-    if ((m < 0 and p >= 0) or (m >= 0 and p < 0)) then break end
-    n = q + s
-    -- sum overflowed
-    if n < 0 then break end
-    if x < m / n then r = m; s = n else y = y + d; p = m; q = n end
+local waveforms = {}
+for i, filename in ipairs(love.filesystem.getDirectoryItems("waves")) do
+  local waveName = filename:match("^(.-)%.lua$")
+  if not waveName then
+  	print("Not a Lua file", filename)
+  else
+  	local r, file = pcall(love.filesystem.load, "waves/" .. filename)
+  	if not r then
+  	  print("Error loading", filename, file)
+  	else
+  	  local r, wave = pcall(file)
+  	  if not r then
+  	  	print("Error executing", filename, wave)
+  	  else
+  	  	if not type(wave) == "function" then
+  	  	  print("Invalid file", filename)
+  	  	else
+  	  	  waveforms[waveName] = wave
+  	  	end
+  	  end
+  	end
   end
-  -- final round-off
-  return y + d
 end
 
-local function expow(x) return x > 0.0 and x^x or 1.0 end
 
-local waveforms = {
-  sine = function(p, v) return sin(p*v*tau) end,
-  sawtooth = function(p, v) return p * v % 2 - 1 end,
-  square = function(p, v) return p * v % 2 > 1 and 1 or -1 end,
-  minkQM = function(p, v) return (minkowskiQM(p*v)-p*v) * 7 end,
-  expow = function(p, v) return (expow((p*v) % 1.0)-0.69)*3 end,
-  cantor = require "waves.cantor",
-}
 local instrs = {
   sine = {
     {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
@@ -273,8 +261,8 @@ while true do
       local notesN = 0
 
       for i, note in pairs(notes) do
-        local time = note.time + t
-        note.ttime = note.ttime + t
+        local time = note.time + sampleLength
+        note.ttime = note.ttime + sampleLength
         --note.phase = note.phase + t
 
         local a
@@ -348,7 +336,7 @@ while true do
         local f1 = 440 * 2^((n - 49) / 12)
         --local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
         --local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
-        note.phase = note.phase + t * phaseShift -- f2 / f1
+        note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
         --io.write(f1, "\t", f2, "\n")
         sample = sample + note.func(note.phase, f1) * a * note.amplitude--instrs[note.instrument](note.phase, f1) * a
         --print(sample)

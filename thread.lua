@@ -1,4 +1,4 @@
-local channel = ...
+local channel, presets = ...
 
 table.merge = function(to, from) --doubles as shallow clone too!
   to = to or {}
@@ -77,53 +77,7 @@ local waveforms = {
   expow = function(p, v) return (expow((p*v) % 1.0)-0.69)*3 end,
   cantor = require "waves.cantor",
 }
-local instrs = {
-  sine = {
-    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
-
-  flute = {
-    {amplitude = 0.7, keyshift = 0,  waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }, 
-    {amplitude = 0.7, keyshift = 12, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
-
-  organ = {
-    {amplitude = 0.4, keyshift = -12, waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 0,   waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 12,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 24,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    --{amplitude = 0.3, keyshift = 36,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} }
-  },
-
-  saw = {
-    {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
-  },
-
-  square = {
-    {amplitude = 1, keyshift = 0, waveform = "square"},
-  },
-
-  double = {
-    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },
-    {amplitude = 1, keyshift = 0.005, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
-
-  minkQM = {
-    {amplitude = 1, keyshift = 0, waveform = "minkQM", effects = {{type = "vibrato", 6, 1/8}, } },
-  },
-
-  minkQM1 = {
-  	{amplitude = 1, keyshift = 0, waveform = "minkQM"},
-  },
-
-  expow = {
-    {amplitude = 1, keyshift = 0, waveform = "expow"},
-  },
-
-  cantor = {
-    {amplitude = 1, keyshift = 0, waveform = "cantor"}
-  }
-}
+local instrs = {}
 
 local effects
       effects = {
@@ -203,6 +157,22 @@ local addNote = function(note, id)
   notes[#notes + 1] = note
 end
 
+assemblePreset = function(preset)
+  print("Assembling", preset.name)
+  preset.action = nil
+  local voices = preset.voices
+  for i = 1, voices do
+  	local voice = presets:pop()
+  	preset[i] = voice
+  	local effects = voice.effects
+  	voice.effects = {}
+  	for i = 1, effects do
+  	  local effect = presets:pop()
+  	  voice.effects[i] = effect
+  	end
+  end
+  instrs[preset.name] = preset
+end
 
 
 while true do
@@ -212,7 +182,10 @@ while true do
     if event then
       local action = event.action
 
-      if action == "start" then -- start first; gotta go fast
+      if action == "preset" then
+      	assemblePreset(event)
+
+      elseif action == "start" then -- start first; gotta go fast
         local id = event.id
 
         IDs[id] = IDs[id] and error("Starting note already exists") or {}

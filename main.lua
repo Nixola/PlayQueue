@@ -1,4 +1,70 @@
 config = {}
+---[[
+local instruments = {
+  sine = {
+    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
+  },
+
+  flute = {
+    {amplitude = 0.7, keyshift = 0,  waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }, 
+    {amplitude = 0.7, keyshift = 12, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
+  },
+
+  organ = {
+    {amplitude = 0.4, keyshift = -12, waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 0,   waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 12,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    {amplitude = 0.4, keyshift = 24,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
+    --{amplitude = 0.3, keyshift = 36,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} }
+  },
+
+  saw = {
+    {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
+  },
+
+  square = {
+    {amplitude = 1, keyshift = 0, waveform = "square"},
+  },
+
+  double = {
+    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },
+    {amplitude = 1, keyshift = 0.005, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
+  },
+
+  minkQM = {
+    {amplitude = 1, keyshift = 0, waveform = "minkQM", effects = {{type = "vibrato", 6, 1/8}, } },
+  },
+
+  minkQM1 = {
+    {amplitude = 1, keyshift = 0, waveform = "minkQM"},
+  },
+
+  expow = {
+    {amplitude = 1, keyshift = 0, waveform = "expow"},
+  },
+
+  cantor = {
+    {amplitude = 1, keyshift = 0, waveform = "cantor"}
+  }
+}
+--]]
+
+local pushPreset = function(preset, name)
+  print("Pushing", name)
+  for i, v in ipairs(preset) do
+    v.effects = v.effects or {}
+    presets:push{
+      amplitude = v.amplitude;
+      keyshift  = v.keyshift;
+      waveform  = v.waveform;
+      effects   = #v.effects;
+    }
+    for i, e in ipairs(v.effects) do
+      presets:push(e)
+    end
+  end
+  channel:push({action = "preset", name = name, voices = #preset})
+end
 
 function love.load(arrrgs)
 
@@ -19,13 +85,18 @@ function love.load(arrrgs)
 
   thread = love.thread.newThread("thread.lua")
   channel = love.thread.newChannel()
+  presets = love.thread.newChannel()
   channel:push(SR)
   channel:push(SL)
 
   channel:push(SQ)
   channel:push(SD)
 
-  thread:start(channel)
+  thread:start(channel, presets)
+
+  for i, v in pairs(instruments) do
+    pushPreset(v, i)
+  end
 
   instrument = "sine"
 

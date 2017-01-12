@@ -64,6 +64,7 @@ for i, filename in ipairs(love.filesystem.getDirectoryItems("waves")) do
   end
 end
 
+--[[
 local waveforms = {
   sine = function(p, v) return sin(p*v*tau) end,
   sawtooth = function(p, v) return p * v % 2 - 1 end,
@@ -71,7 +72,7 @@ local waveforms = {
   minkQM = function(p, v) return (minkowskiQM(p*v)-p*v) * 7 end,
   expow = function(p, v) return (expow((p*v) % 1.0)-0.69)*3 end,
   cantor = require "waves.cantor",
-}
+}--]]
 local instrs = {}
 
 local effects

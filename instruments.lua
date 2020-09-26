@@ -27,7 +27,7 @@ return {
   },
   ---[[
   saw = {
-    {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
+    {amplitude = .6, keyshift = 0, waveform = "sawtooth", effects = {{type = "chorus", .1}}},
   },
 
   square = {

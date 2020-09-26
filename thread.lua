@@ -71,51 +71,29 @@ end
 
 local instrs = {}
 
-local effects
-      effects = {
-  vibrato = {
-    init = nil, --explicitly nil as example
-    continuous = function(state, speed, depth, waveform)
-      waveform = waveform or "sine"
-      local ratio = 2^(waveforms[waveform](speed, state.ttime) * depth / 12 )
-      return {phaseShift = ratio}
-    end
-  },
-  echo = {
-    init = function(note, delay, amount, depth) --don't even know if this will work
-      delay = delay or 0.100 --seconds, needs testing
-      amplitude = amplitude or 0.5 --needs testing
-      depth = depth or math.ceil(math.log(amplitude, depth))
-      local t = {}
-      for i = 1, depth do
-        t[i] = table.clone(note)
-        t[i].delay = delay * i
-        t[i].amplitude = t[i].amplitude * amplitude ^ i
+local effects = {}
+for i, filename in ipairs(love.filesystem.getDirectoryItems("effects")) do
+  local effectName = filename:match("^(.-)%.lua$")
+  if not effectName then
+    print("Not a Lua file", filename)
+  else
+    local r, file = pcall(love.filesystem.load, "effects/" .. filename)
+    if not r then
+      print("Error loading", filename, file)
+    else
+      local r, effect = pcall(file)
+      if not r then
+        print("Error executing", filename, effect)
+      else
+        if not type(effect) == "function" then
+          print("Invalid file", filename)
+        else
+          effects[effectName] = effect
+        end
       end
-      return t
     end
-  },
-  flanger = {
-    init = function(note, shift)
-      shift = shift or 0.1
-      local t = {}
-      note.amplitude = note.amplitude / 2
-      t[1] = table.clone(note)
-      t[1].frequency = t[1].frequency + shift
-      return t
-    end
-  },
-  chorus = {
-    init = function(note, shift)
-      shift = shift or 0.1
-      local n1 = effects.flanger.init(note, shift)[1]
-      note.amplitude = note.amplitude * 2
-      local n2 = effects.flanger.init(note, -shift)[1]
-      return {n1, n2}
-    end
-  },
-}
-
+  end
+end
 
 notes = {}
 IDs = {}
@@ -201,16 +179,17 @@ while true do
           local startEffects = {}
           for i = #note.effects, 1, -1 do
             local v = note.effects[i]
-            if effects[v.type].init then
+            v.effect = effects[v.type](effects, waveforms)
+            if v.effect.init then
               startEffects[#startEffects + 1] = v
             end
-            if not effects[v.type].continuous then
+            if not v.effect.continuous then
               table.remove(note.effects, i)
             end
           end
 
           for i, v in ipairs(startEffects) do
-            for i, v in ipairs(effects[v.type].init(note, unpack(v))) do
+            for i, v in ipairs(v.effect:init(note, unpack(v))) do
               addNote(v, id)
             end
           end
@@ -242,33 +221,36 @@ while true do
     end
 
     for i = 0, SL-1 do
+      -- Synthesize her
+      --               e
       local sample = 0
       local notesN = 0
 
       for i, note in pairs(notes) do
-        local time = note.time + sampleLength
-        note.ttime = note.ttime + sampleLength
-        --note.phase = note.phase + t
+        local time = note.time + sampleLength  -- time and note.time are the elapsed time since the last state change
+        note.ttime = note.ttime + sampleLength -- note.ttime is the total time the note has lived
 
         local a
+
         if note.state == "delay" then
           if time > note.delay then
             note.state = "attack"
-            time = 0
+            time = time - note.delay
           else
             a = 0
           end
         end
+
         if note.state == "attack" then
           if time > note.attack then
             note.state = "decay"
-            time = 0
-
+            time = time - note.attack
           else
             a = time / note.attack
             notesN = notesN + 1
           end
         end
+
         if note.state == "decay" then
           if time > note.decay then
             note.state = "sustain"
@@ -279,6 +261,7 @@ while true do
             notesN = notesN + 1
           end
         end
+
         if note.state == "sustain" then
           if note.duration and note.ttime > note.duration then
             note.state = "release"
@@ -287,6 +270,7 @@ while true do
           a = note.sustain
           notesN = notesN + 1
         end
+
         if note.state == "release" then
           if time > note.release then
             for ii, vv in pairs(IDs[note.id]) do
@@ -303,7 +287,8 @@ while true do
             notesN = notesN + 1
           end
         end
-        note.a = a
+
+        note.a = a -- used when releasing a note before sustain kicks in
 
         local n = note.frequency
 
@@ -311,7 +296,7 @@ while true do
 
         local effs = {}
         for i, v in ipairs(note.effects) do
-          effs[i] = effects[v.type].continuous(note, unpack(v))
+          effs[i] = v.effect:continuous(note, unpack(v))
           a = a * (effs[i].amplitude or 1)
           n = n * (effs[i].keyShift or 1)
           phaseShift = phaseShift * (effs[i].phaseShift or 1)
@@ -319,12 +304,8 @@ while true do
 
 
         local f1 = 440 * 2^((n - 49) / 12)
-        --local f2 = 440 * 2^((n + sin(tau * 6 * note.ttime)/6 - 49) / 12)
-        --local ratio = 2^(sin(tau * 6 * note.ttime)/ 6 / 12 )
         note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
-        --io.write(f1, "\t", f2, "\n")
-        sample = sample + note.func(note.phase, f1) * a * note.amplitude--instrs[note.instrument](note.phase, f1) * a
-        --print(sample)
+        sample = sample + note.func(note.phase, f1) * a * note.amplitude
 
         note.time = time
       end

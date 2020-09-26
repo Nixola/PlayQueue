@@ -25,7 +25,7 @@ return {
     {amplitude = 0.4, keyshift = 24,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
     --{amplitude = 0.3, keyshift = 36,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} }
   },
-  --[[
+  ---[[
   saw = {
     {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
   },
@@ -33,11 +33,11 @@ return {
   square = {
     {amplitude = 1, keyshift = 0, waveform = "square"},
   },
+  --[=[
   --]]
-  ---[[
   saw = saw,
   square = sq,
-  --]]
+  --]=]
 
   double = {
     {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },

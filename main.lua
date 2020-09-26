@@ -1,54 +1,19 @@
-config = {}
----[[
-local instruments = {
-  sine = {
-    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
+local layouts = require "layouts"
+local UI, ui = require "ui"
+require "run"
 
-  flute = {
-    {amplitude = 0.7, keyshift = 0,  waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }, 
-    {amplitude = 0.7, keyshift = 12, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
+local config = {}
+local lastRandomKey
 
-  organ = {
-    {amplitude = 0.4, keyshift = -12, waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 0,   waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 12,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    {amplitude = 0.4, keyshift = 24,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} },
-    --{amplitude = 0.3, keyshift = 36,  waveform = "sine", effects = {{type = "vibrato", 3, 1/10}} }
-  },
+local instruments = require "instruments"
 
-  saw = {
-    {amplitude = 1, keyshift = 0, waveform = "sawtooth"},
-  },
+local settings = require "settings"
 
-  square = {
-    {amplitude = 1, keyshift = 0, waveform = "square"},
-  },
+local startRecording = false
+local recording = false
+local stopRecording = false
 
-  double = {
-    {amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },
-    {amplitude = 1, keyshift = 0.005, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} }
-  },
-
-  minkQM = {
-    {amplitude = 1, keyshift = 0, waveform = "minkQM", effects = {{type = "vibrato", 6, 1/8}, } },
-  },
-
-  minkQM1 = {
-    {amplitude = 1, keyshift = 0, waveform = "minkQM"},
-  },
-
-  expow = {
-    {amplitude = 1, keyshift = 0, waveform = "expow"},
-  },
-
-  cantor = {
-    {amplitude = 1, keyshift = 0, waveform = "cantor"}
-  }
-}
---]]
-
+-- Push a preset onto the preset channel to the synth thread
 local pushPreset = function(preset, name)
   print("Pushing", name)
   for i, v in ipairs(preset) do
@@ -68,6 +33,10 @@ end
 
 function love.load(arrrgs)
 
+  for i, v in pairs(arg) do print(i, v) end
+  print "arr"
+  for i, v in pairs(arrrgs) do print(i, v) end
+
   table.remove(arg, 1)
   for i, v in ipairs(arg) do
     if v:match("^%-%-") then --option
@@ -78,8 +47,10 @@ function love.load(arrrgs)
     end
   end
 
+  ui = UI.new("ui.png")
+
   SR = tonumber(config.samplerate) or 44100
-  SL = tonumber(config.buffersize) or 256
+  SL = tonumber(config.buffersize) or 512
   SQ = love.audio.newQueueableSource(SR,16,1) -- "Queue type"...
   SD = love.sound.newSoundData(SL,SR,16,1) -- Buffer
 
@@ -119,113 +90,28 @@ function love.load(arrrgs)
   config.release = tonumber(config.release) or 0.05
   config.duration = tonumber(config.duration)
 
-  attack = config.attack
-  decay = config.decay
-  sustain = config.sustain
-  release = config.release
-  duration = config.duration
+  settings.attack = config.attack
+  settings.decay = config.decay
+  settings.sustain = config.sustain
+  settings.release = config.release
+  settings.duration = config.duration
+
+  settings.defaults.attack = config.attack
+  settings.defaults.decay = config.decay
+  settings.defaults.sustain = config.sustain
+  settings.defaults.release = config.release
+  settings.defaults.duration = config.duration
 
   instruments = {
     {name = "sine"},
-    {name = "organ"},
-    {name = "flute"},
+    {name = "organ", attack = 0.1},
+    {name = "flute", attack = 0.1},
     {name = "saw"},
     {name = "square"},
-    {name = "minkQM", attack = 0.3},
-    {name = "minkQM1", attack = 0, decay = 0.15, sustain = 0.2, duration = 0}
-  }
-
-  layouts = {}
-  layouts.openmpt = {
-    ["1"] = 28,
-    ["2"] = 29,
-    ["3"] = 30,
-    ["4"] = 31,
-    ["5"] = 32,
-    ["6"] = 33,
-    ["7"] = 34,
-    ["8"] = 35,
-    ["9"] = 36,
-    ["0"] = 37,
-    ["-"] = 38,
-    ["="] = 39,
-    ["q"] = 40,
-    ["w"] = 41,
-    ["e"] = 42,
-    ["r"] = 43,
-    ["t"] = 44,
-    ["y"] = 45,
-    ["u"] = 46,
-    ["i"] = 47,
-    ["o"] = 48,
-    ["p"] = 49,
-    ["["] = 50,
-    ["]"] = 51,
-    ["a"] = 52,
-    ["s"] = 53,
-    ["d"] = 54,
-    ["f"] = 55,
-    ["g"] = 56,
-    ["h"] = 57,
-    ["j"] = 58,
-    ["k"] = 59,
-    ["l"] = 60,
-    [";"] = 61,
-    ["'"] = 62,
-    ["\\"] = 63,
-    ["nonusbackslash"] = 64,
-    ["z"] = 65,
-    ["x"] = 66,
-    ["c"] = 67,
-    ["v"] = 68,
-    ["b"] = 69,
-    ["n"] = 70,
-    ["m"] = 71,
-    [","] = 72,
-    ["."] = 73,
-    ["/"] = 74,
-  }
-  layouts.piano = {
-    ["q"] = 40,
-    ["2"] = 41,
-    ["w"] = 42,
-    ["3"] = 43,
-    ["e"] = 44,
-    ["r"] = 45,
-    ["5"] = 46,
-    ["t"] = 47,
-    ["6"] = 48,
-    ["y"] = 49,
-    ["7"] = 50,
-    ["u"] = 51,
-    ["i"] = 52,
-    ["9"] = 53,
-    ["o"] = 54,
-    ["0"] = 55,
-    ["p"] = 56,
-    ["["] = 57,
-    ["="] = 58,
-    ["]"] = 59,
-    ["nonusbackslash"] = 52,
-    ["a"] = 53,
-    ["z"] = 54,
-    ["s"] = 55,
-    ["x"] = 56,
-    ["c"] = 57,
-    ["f"] = 58,
-    ["v"] = 59,
-    ["g"] = 60,
-    ["b"] = 61,
-    ["h"] = 62,
-    ["n"] = 63,
-    ["m"] = 64,
-    ["k"] = 65,
-    [","] = 66,
-    ["l"] = 67,
-    ["."] = 68,
-    [";"] = 69,
-    ["\\"] = 70,
-    ["à"] = 71,
+    {name = "minkQM", attack = 0.1},
+    {name = "minkQM1", attack = 0, decay = 0.15, sustain = 0.2, duration = 0},
+    {name = "vibraphone", attack = 0, decay = .3, sustain = 0.1, duration = 0},
+    {name = "test", attack = 0, release = .1}
   }
 
   if not config.layout then
@@ -241,32 +127,13 @@ function love.load(arrrgs)
     end
   end
 
-  --draw stuff
-  lightUp = {6/16, 6/16, 6/16}
-  lightDown={12/16, 12/16, 12/16}
-  darkUp  = {1/16, 1/16, 1/16}
-  darkDown= {8/16, 8/16, 8/16}
-  palette = love.graphics.newCanvas(256, 1)
-  palette:setFilter("nearest", "nearest")
-  shader = love.graphics.newShader [[
-    extern Image palette;
+  if tonumber(config.shift) then
+    for i, v in pairs(keys) do
+      keys[i] = v + config.shift
+    end
+  end
 
-    vec4 effect(vec4 color, Image texture, vec2 texture_coords, vec2 pixel_coords) { 
-      vec4 tex_color = texture2D(texture, texture_coords);
-      vec2 index = vec2(tex_color.r, 0); //get color based on red
-      return texture2D(palette, index);
-    }]]
-
-  keyImg = love.graphics.newImage("keyboard.png")
-
-  shader:send("palette", palette)
-
-  love.graphics.setCanvas(palette)
-    love.graphics.setColor(lightUp)
-    love.graphics.rectangle("fill", 1.5, 0.5, 127, 1) -- we want the first pixel empty
-    love.graphics.setColor(darkUp)
-    love.graphics.rectangle("fill", 128.5, 0.5, 128, 1)
-  love.graphics.setCanvas()
+  love.keyboard.setKeyRepeat(true)
 
 end
 
@@ -277,147 +144,124 @@ end
 
 
 function love.draw()
+  ui:draw()
 
   love.graphics.setColor(1, 1, 1)
-  --love.graphics.draw(palette, 0, 0, 0, 3, 3)
-  love.graphics.setShader(shader)
-    love.graphics.draw(keyImg, 86, 200)
-  love.graphics.setShader()
-  
-
+  love.graphics.print(settings:format())
 end
 
 
-function love.keypressed(kk,k)
-  if keys[k] then
+function love.keypressed(kk,k, isRepeat)
+  local ctrl = love.keyboard.isDown("lctrl", "rctrl")
+  local shift = love.keyboard.isDown("lshift", "rshift")
+  local alt = love.keyboard.isDown("lalt")
+  if settings.keys[k] then
+    settings:keypressed(k)
+    return
+  end
 
-    --t[k] = 440 * (2^(1/12))^(keys[k]-49)
-    --tn = tn + 1
-    --print(f)
+  if isRepeat then
+    return
+  end
+
+  if k == "space" then
+    local note = love.math.random(40, 51)
+    for i, v in pairs(keys) do
+      if v == note then
+        k = i
+        lastRandomKey = k
+      end
+    end
+  end
+
+  if keys[k] then
+    if startRecording then
+      channel:push{action = "record"}
+      startRecording = false
+      recording = true
+    end
+
+    local effects = {}
+    if shift then
+      effects[1] = {type = "vibrato", 6, 1/4}
+    end
     channel:push{
       action = "start",
       id = notes.number,
       instrument = instrument,
-      attack = attack,
-      decay = decay,
-      sustain = sustain,
-      release = release,
-      duration = duration,
+      attack = settings.attack,
+      decay = settings.decay,
+      sustain = settings.sustain,
+      release = settings.release,
+      duration = settings.duration,
       frequency = keys[k],
       amplitude = 1,
+      effects = effects,
     }
 
-    love.graphics.setCanvas(palette)
-      love.graphics.setColor(lightDown)
-      love.graphics.rectangle("fill", keys[k] + 1 - 0.5, 0.5, 1, 1)
-      love.graphics.setColor(darkDown)
-      love.graphics.rectangle("fill", keys[k] + 1 + 127.5, 0.5, 1, 1)
-    love.graphics.setCanvas()
+    ui:noteDown(keys[k])
     notes[k] = notes.number
     notes.number = notes.number + 1
+
   elseif k:match("f[0-9]+") then
     local n = tonumber(k:match("f([0-9]+)"))
-    if instruments[n] then
-      instrument = instruments[n].name
-      attack = instruments[n].attack or config.attack
-      decay = instruments[n].decay or config.decay
-      sustain = instruments[n].sustain or config.sustain
-      release = instruments[n].release or config.release
-      duration = instruments[n].duration or config.duration
+    if shift then
+      if instruments[n] then
+        instruments[n].attack = settings.attack or settings.defaults.attack or config.attack
+        instruments[n].decay = settings.decay or settings.defaults.decay or config.decay
+        instruments[n].sustain = settings.sustain or settings.defaults.sustain or config.sustain
+        instruments[n].release = settings.release or settings.defaults.release or config.release
+        instruments[n].duration = settings.duration or settings.defaults.duration or config.duration
+      end
+    else
+      if instruments[n] then
+        instrument = instruments[n].name
+        settings.attack = instruments[n].attack or config.attack
+        settings.decay = instruments[n].decay or config.decay
+        settings.sustain = instruments[n].sustain or config.sustain
+        settings.release = instruments[n].release or config.release
+        settings.duration = instruments[n].duration or config.duration
+      end
     end
   end
-  --[[
-  elseif k == "f1" then instrument = "sine"
-  elseif k == "f2" then instrument = "organ"
-  elseif k == "f3" then instrument = "flute"
-  elseif k == "f4" then instrument = "saw"
-  elseif k == "f5" then instrument = "square"
-  elseif k == "f6" then instrument = "double"
-  elseif k == "f7" then instrument = "minkQM"
-  elseif k == "f8" then instrument = "expow"
-  elseif k == "f9" then instrument = "cantor"
-  end--]]
+
+  if UI.mods[k] then
+    ui:modDown(k)
+  end
+
+  if k == "insert" then
+    if not recording then
+      startRecording = not startRecording
+    else
+      print("Recording stopped")
+      recording = false
+      channel:push{action="stop"}
+    end
+  end
+
 end
 
 function love.keyreleased(kk,k)
+  if k == "space" then
+    k = lastRandomKey
+  end
   if keys[k] and notes[k] then
-  	--t[k] = nil
-  	--tn = tn - 1
+    --t[k] = nil
+    --tn = tn - 1
     --local s = (tn == 0) and stop or t
-  	--channel:push(s)
+    --channel:push(s)
     channel:push{
       action = "release",
       id = notes[k]
     }
 
-    love.graphics.setCanvas(palette)
-      love.graphics.setColor(lightUp)
-      love.graphics.rectangle("fill", keys[k] + 1 - 0.5, 0.5, 1, 1)
-      love.graphics.setColor(darkUp)
-      love.graphics.rectangle("fill", keys[k] + 1 + 127.5, 0.5, 1, 1)
-    love.graphics.setCanvas()
+    ui:noteUp(keys[k])
     notes[k] = nil
+  end
+
+  if UI.mods[k] then
+    ui:modUp(k)
   end
 end
 
 love.threaderror = print
-
-function love.run()
- 
-  if love.math then
-    love.math.setRandomSeed(os.time())
-  end
-
-  if love.load then love.load(arg) end
- 
-  -- We don't want the first frame's dt to include time taken by love.load.
-  if love.timer then love.timer.step() end
- 
-  local dt = 0
-
-  local tr = 1/60
-  local fr = 1/60
-
-  local ua = 0
-  local da = 0
- 
-  -- Main loop time.
-  while true do
-    -- Process events.
-    if love.event then
-      love.event.pump()
-      for name, a,b,c,d,e,f in love.event.poll() do
-        if name == "quit" then
-          if not love.quit or not love.quit() then
-            return a
-          end
-        end
-        love.handlers[name](a,b,c,d,e,f)
-      end
-    end
- 
-    -- Update dt, as we'll be passing it to update
-    love.timer.step()
-    dt = love.timer.getDelta()
-
-    ua = ua + dt
-    da = da + dt
- 
-    -- Call update and draw
-    if love.update and ua > tr then 
-      love.update(dt)
-      ua = ua % tr
-    end -- will pass 0 if love.timer is disabled
- 
-    if da > fr and love.graphics and love.graphics.isActive() then
-      love.graphics.clear(love.graphics.getBackgroundColor())
-      love.graphics.origin()
-      if love.draw then love.draw() end
-      love.graphics.present()
-      da = da % fr
-    end
- 
-    love.timer.sleep(0.001)
-  end
- 
-end

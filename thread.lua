@@ -1,5 +1,9 @@
 local channel, presets = ...
 
+local recording, startRecording, stopRecording
+local writer = love.thread.newThread("writer.lua")
+local writerChannel = love.thread.newChannel()
+
 table.merge = function(to, from) --doubles as shallow clone too!
   to = to or {}
   from = from or {}
@@ -109,7 +113,7 @@ local effects
       local n2 = effects.flanger.init(note, -shift)[1]
       return {n1, n2}
     end
-  }
+  },
 }
 
 
@@ -226,6 +230,14 @@ while true do
           end
           note.duration = note.ttime + note.delay
         end
+      elseif action == "record" then
+        if not recording then
+          startRecording = true
+        end
+      elseif action == "stop" then
+        if recording then
+          stopRecording = true
+        end
       end
     end
 
@@ -321,6 +333,19 @@ while true do
     end
     source:queue(buffer)
     source:play()
+    if startRecording then
+      writer:start(writerChannel)
+      startRecording = false
+      recording = true
+    end
+    if stopRecording then
+      writerChannel:push("stop")
+      stopRecording = false
+      recording = false
+    end
+    if recording then
+      writerChannel:push(buffer)
+    end
   end
   love.timer.sleep(0.001)
 end

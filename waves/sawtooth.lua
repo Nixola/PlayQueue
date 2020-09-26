@@ -1,1 +1,1 @@
-return function(x, frequency) return x * frequency % 2 - 1 end
+return function(x, frequency) return x * frequency * 2 % 2 - 1 end

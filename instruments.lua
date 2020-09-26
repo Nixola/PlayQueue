@@ -31,7 +31,7 @@ return {
   },
 
   square = {
-    {amplitude = 1, keyshift = 0, waveform = "square", effects = {{type = "chorus", .1}}},
+    {amplitude = .6, keyshift = 0, waveform = "square", effects = {{type = "chorus", .1}}},
   },
   --[=[
   --]]
@@ -69,6 +69,6 @@ return {
 
   test = {
   	{amplitude = 0.8, keyshift = 0, waveform = "sine"},
-  	{amplitude = 0.1, keyshift = 0, waveform = "square"},
+  	{amplitude = 0.8, keyshift = 0, waveform = "square", effects = {{type = "envelope", 0.02, 0.05, 0.1, 0.02}}},
   }
 }

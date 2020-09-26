@@ -31,7 +31,7 @@ return {
   },
 
   square = {
-    {amplitude = 1, keyshift = 0, waveform = "square"},
+    {amplitude = 1, keyshift = 0, waveform = "square", effects = {{type = "chorus", .1}}},
   },
   --[=[
   --]]

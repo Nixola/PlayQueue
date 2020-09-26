@@ -103,15 +103,15 @@ function love.load(arrrgs)
   settings.defaults.duration = config.duration
 
   instruments = {
-    {name = "sine"},
-    {name = "organ", attack = 0.1},
-    {name = "flute", attack = 0.1},
-    {name = "saw"},
-    {name = "square"},
-    {name = "minkQM", attack = 0.1},
-    {name = "minkQM1", attack = 0, decay = 0.15, sustain = 0.2, duration = 0},
-    {name = "vibraphone", attack = 0, decay = .3, sustain = 0.1, duration = 0},
-    {name = "test", attack = 0, release = .1}
+    {name = "sine", display = "Sine"},
+    {name = "organ", display = "Organ", attack = 0.1},
+    {name = "flute", display = "Voice (?)", attack = 0.1},
+    {name = "saw", display = "Saw wave"},
+    {name = "square", display = "Square wave"},
+    {name = "minkQM", display = "Strings...?", attack = 0.1},
+    {name = "minkQM1", display = "Pizz. strings...???", attack = 0, decay = 0.15, sustain = 0.2, duration = 0},
+    {name = "vibraphone", display = "Vibraphone - like thing???", attack = 0, decay = .3, sustain = 0.1, duration = 0},
+    {name = "test", display = "I don't even know", attack = 0, release = .2},
   }
 
   if not config.layout then
@@ -147,7 +147,17 @@ function love.draw()
   ui:draw()
 
   love.graphics.setColor(1, 1, 1)
-  love.graphics.print(settings:format())
+  love.graphics.print(settings:format(), 0, 40)
+
+  for i, v in ipairs(instruments) do
+    if instrument == v.name then
+      love.graphics.setColor(1,1,1)
+    else
+      love.graphics.setColor(.5,.5,.5)
+    end
+    local x = math.floor(800 / #instruments * (i - 1))
+    love.graphics.printf("F" .. i .. "\n" .. v.display, x, 0, 800/#instruments, "center")
+  end
 end
 
 

@@ -10,7 +10,7 @@ table.merge = function(to, from) --doubles as shallow clone too!
 
   local new = {}
   for i, v in pairs(to) do
-    new[i] = v
+    new[i] = type(v) == "table" and table.clone(v) or v
   end
   local cache = {}
   ---[[
@@ -21,7 +21,7 @@ table.merge = function(to, from) --doubles as shallow clone too!
   end--]]
   for i, v in pairs(from) do
     if not cache[i] then
-      new[i] = v
+      new[i] = type(v) == "table" and table.clone(v) or v
     end
   end
   return new

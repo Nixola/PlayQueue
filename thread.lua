@@ -307,7 +307,7 @@ while true do
           end
 
 
-          local f1 = 440 * 2^((n - 49) / 12)
+          local f1 = 440 * 2^((n - 69) / 12)
           note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
           sample = sample + note.func(note.phase, f1) * a * note.amplitude
 

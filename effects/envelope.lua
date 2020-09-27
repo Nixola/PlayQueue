@@ -7,7 +7,11 @@ return function(effects, waveforms)
       return {}
     end,
 
-    continuous = function(self, note, attack, decay, sustain, release)
+    continuous = function(self, note, args)
+      local attack = args[1]
+      local decay = args[2]
+      local sustain = args[3]
+      local release = args[4]
       if self.state == "delay" then
         self.a = 0
         if self.time > note.delay then

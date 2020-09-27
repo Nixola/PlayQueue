@@ -189,7 +189,7 @@ while true do
           end
 
           for i, v in ipairs(startEffects) do
-            for i, v in ipairs(v.effect:init(note, unpack(v))) do
+            for i, v in ipairs(v.effect:init(note, v)) do
               addNote(v, id)
             end
           end
@@ -200,7 +200,7 @@ while true do
         if not IDs[event.id] then
           error("Released note doesn't exist")
         end
-        for i, note in pairs(IDs[event.id]) do
+        for i, note in ipairs(IDs[event.id]) do
           note.time = 0
           if note.delay == 0 then
           	note.state = "release"
@@ -226,11 +226,11 @@ while true do
       local sample = 0
       local notesN = 0
 
-      for i, note in pairs(notes) do
+      for i, note in ipairs(notes) do
         local time = note.time + sampleLength  -- time and note.time are the elapsed time since the last state change
         note.ttime = note.ttime + sampleLength -- note.ttime is the total time the note has lived
 
-        local a
+        local a = 0
 
         if note.state == "delay" then
           if time > note.delay then
@@ -273,13 +273,14 @@ while true do
 
         if note.state == "release" then
           if time > note.release then
-            for ii, vv in pairs(IDs[note.id]) do
+            for ii, vv in ipairs(IDs[note.id]) do
               if vv == note then
                 IDs[note.id][ii] = nil
                 break
               end
             end
-            notes[i] = nil
+            --notes[i] = nil
+            note.state = "end"
             a = 0
           else
             local tt = time / note.release
@@ -288,26 +289,29 @@ while true do
           end
         end
 
-        note.a = a -- used when releasing a note before sustain kicks in
+        if not (note.state == "end") then -- entirely skip over processing dead notes
 
-        local n = note.frequency
+          note.a = a -- used when releasing a note before sustain kicks in
 
-        local phaseShift = 1
+          local n = note.frequency
 
-        local effs = {}
-        for i, v in ipairs(note.effects) do
-          effs[i] = v.effect:continuous(note, unpack(v))
-          a = a * (effs[i].amplitude or 1)
-          n = n * (effs[i].keyShift or 1)
-          phaseShift = phaseShift * (effs[i].phaseShift or 1)
+          local phaseShift = 1
+
+          local effs = {}
+          for i, v in ipairs(note.effects) do
+            effs[i] = v.effect:continuous(note, v)
+            a = a * (effs[i].amplitude or 1)
+            n = n * (effs[i].keyShift or 1)
+            phaseShift = phaseShift * (effs[i].phaseShift or 1)
+          end
+
+
+          local f1 = 440 * 2^((n - 49) / 12)
+          note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
+          sample = sample + note.func(note.phase, f1) * a * note.amplitude
+
+          note.time = time
         end
-
-
-        local f1 = 440 * 2^((n - 49) / 12)
-        note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
-        sample = sample + note.func(note.phase, f1) * a * note.amplitude
-
-        note.time = time
       end
 
       buffer:setSample(i, sample / 4)--notesN)
@@ -327,6 +331,15 @@ while true do
     if recording then
       writerChannel:push(buffer)
     end
+    -- Remove dead notes; best to do it when a buffer's just been pushed
+    --[[
+    for i = #notes, 1, -1 do
+      local note = notes[i]
+      if note.state == "end" then
+        table.remove(notes, i)
+      end
+    end
+    --]]
   end
   love.timer.sleep(0.001)
 end

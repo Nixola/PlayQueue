@@ -165,13 +165,13 @@ while true do
           note.id = id
           note.time = 0
           note.phase = 0
-          note.ttime = 0
           note.attack = event.attack
           note.decay = event.decay
           note.sustain = event.sustain
           note.release = event.release
           note.duration = event.duration
           note.delay = event.delay or 0
+          note.ttime = -note.delay
           note.frequency = event.frequency + voice.keyshift
           note.amplitude = event.amplitude * voice.amplitude
           note.func = waveforms[voice.waveform] --instrs[event.instrument].func
@@ -233,9 +233,10 @@ while true do
         local a = 0
 
         if note.state == "delay" then
-          if time > note.delay then
+          --if time > note.delay then
+          if note.ttime > 0 then
             note.state = "attack"
-            time = time - note.delay
+            time = note.ttime
           else
             a = 0
           end
@@ -289,7 +290,7 @@ while true do
           end
         end
 
-        if not (note.state == "end") then -- entirely skip over processing dead notes
+        if not (note.state == "end" or note.state == "delay") then -- entirely skip over processing dead notes
 
           note.a = a -- used when releasing a note before sustain kicks in
 
@@ -310,8 +311,8 @@ while true do
           note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
           sample = sample + note.func(note.phase, f1) * a * note.amplitude
 
-          note.time = time
         end
+        note.time = time
       end
 
       buffer:setSample(i, sample / 4)--notesN)

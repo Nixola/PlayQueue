@@ -11,7 +11,7 @@ return function(phase, frequency)
         x = x / i -- amplitude dropoff
         result = result + x
     end
-    return result * 0.707
+    return result * math.pi / 4
 end
 --]]
 --[[

@@ -1,4 +1,8 @@
 return function(phase, frequency) -- code by Zorg. Thanks!
+    if frequency < 384 then
+      phase = phase % (1/frequency)
+      return phase * frequency <= 0.5 and 1 or -1
+    end
     local result = 0
     local x = 0
     local n = math.ceil(SR / 2 / frequency)

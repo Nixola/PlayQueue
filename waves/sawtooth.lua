@@ -1,4 +1,8 @@
+---[[
 return function(phase, frequency)
+    if frequency < 512 then
+        return (phase * frequency * 2) % 2 - 1
+    end
     local result = 0
     local x = 0
     local n = math.ceil(SR / 2 / frequency)
@@ -7,5 +11,10 @@ return function(phase, frequency)
         x = x / i -- amplitude dropoff
         result = result + x
     end
-    return result
+    return result * 0.707
 end
+--]]
+--[[
+return function(phase, frequency)
+    return (phase * frequency * 2) % 2 - 1
+end--]]

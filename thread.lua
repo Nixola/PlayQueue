@@ -333,14 +333,12 @@ while true do
       writerChannel:push(buffer)
     end
     -- Remove dead notes; best to do it when a buffer's just been pushed
-    --[[
     for i = #notes, 1, -1 do
       local note = notes[i]
       if note.state == "end" then
         table.remove(notes, i)
       end
     end
-    --]]
   end
   love.timer.sleep(0.001)
 end

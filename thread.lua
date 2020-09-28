@@ -146,79 +146,92 @@ end
 
 
 while true do
-  if source:getFreeBufferCount() > 0 then
 
-    local event = channel:pop()
-    if event then
-      local action = event.action
+  -- Receive and handle events
+  local event = channel:pop()
+  while event do
+    local action = event.action
 
-      if action == "preset" then
-      	assemblePreset(event)
+    if action == "preset" then
+      assemblePreset(event)
 
-      elseif action == "start" then -- start first; gotta go fast
-        local id = event.id
+    elseif action == "start" then -- start first; gotta go fast
+      local id = event.id
 
-        IDs[id] = IDs[id] and error("Starting note already exists") or {}
+      IDs[id] = IDs[id] and error("Starting note already exists") or {}
 
-        for i, voice in ipairs(instrs[event.instrument]) do
-          local note = {}
-          note.id = id
-          note.time = 0
-          note.phase = 0
-          note.attack = event.attack
-          note.decay = event.decay
-          note.sustain = event.sustain
-          note.release = event.release
-          note.duration = event.duration
-          note.delay = event.delay or 0
-          note.ttime = -note.delay
-          note.frequency = event.frequency + voice.keyshift
-          note.amplitude = event.amplitude * voice.amplitude
-          note.func = waveforms[voice.waveform] --instrs[event.instrument].func
-          note.effects = table.merge(voice.effects, event.effects)
-          local startEffects = {}
-          for i = #note.effects, 1, -1 do
-            local v = note.effects[i]
-            v.effect = effects[v.type](effects, waveforms)
-            if v.effect.init then
-              startEffects[#startEffects + 1] = v
-            end
-            if not v.effect.continuous then
-              table.remove(note.effects, i)
-            end
+      for i, voice in ipairs(instrs[event.instrument]) do
+        local note = {}
+        note.id = id
+        note.time = 0
+        note.phase = 0
+        note.attack = event.attack
+        note.decay = event.decay
+        note.sustain = event.sustain
+        note.release = event.release
+        note.duration = event.duration
+        note.delay = event.delay or 0
+        note.ttime = -note.delay
+        note.frequency = event.frequency + voice.keyshift
+        note.amplitude = event.amplitude * voice.amplitude
+        note.func = waveforms[voice.waveform] --instrs[event.instrument].func
+        note.effects = table.merge(voice.effects, event.effects)
+        local startEffects = {}
+        for i = #note.effects, 1, -1 do
+          local v = note.effects[i]
+          v.effect = effects[v.type](effects, waveforms)
+          if v.effect.init then
+            startEffects[#startEffects + 1] = v
           end
-
-          for i, v in ipairs(startEffects) do
-            for i, v in ipairs(v.effect:init(note, v)) do
-              addNote(v, id)
-            end
+          if not v.effect.continuous then
+            table.remove(note.effects, i)
           end
+        end
 
-          addNote(note, id)
-        end
-      elseif action == "release" then
-        if not IDs[event.id] then
-          error("Released note doesn't exist")
-        end
-        for i, note in ipairs(IDs[event.id]) do
-          note.time = 0
-          if note.delay == 0 then
-          	note.state = "release"
-          	note.sustain = note.a
-          	note.time = 0
+        for i, v in ipairs(startEffects) do
+          for i, v in ipairs(v.effect:init(note, v)) do
+            addNote(v, id)
           end
-          note.duration = note.ttime + note.delay
         end
-      elseif action == "record" then
-        if not recording then
-          startRecording = true
-        end
-      elseif action == "stop" then
-        if recording then
-          stopRecording = true
-        end
+
+        addNote(note, id)
       end
+    elseif action == "release" then
+      if not IDs[event.id] then
+        error("Released note doesn't exist")
+      end
+      for i, note in ipairs(IDs[event.id]) do
+        note.time = 0
+        if note.delay == 0 then
+          note.state = "release"
+          note.sustain = note.a
+          note.time = 0
+        end
+        note.duration = note.ttime + note.delay
+      end
+    elseif action == "record" then
+      if not recording then
+        startRecording = true
+      end
+    elseif action == "stop" then
+      if recording then
+        stopRecording = true
+      end
+    elseif action == "clear" then
+      if recording then
+        stopRecording = true
+      end
+      for i, v in ipairs(notes) do
+        v.state = "end"
+      end
+      IDs = {}
     end
+
+    event = channel:pop()
+  end
+
+  -- If source is running out
+  if source:getFreeBufferCount() > 0 then
 
     for i = 0, SL-1 do
       -- Synthesize her
@@ -267,6 +280,7 @@ while true do
           if note.duration and note.ttime > note.duration then
             note.state = "release"
             note.time = 0
+            time = 0
           end
           a = note.sustain
           notesN = notesN + 1
@@ -317,6 +331,7 @@ while true do
 
       buffer:setSample(i, sample / 4)--notesN)
     end
+
     source:queue(buffer)
     source:play()
     if startRecording then

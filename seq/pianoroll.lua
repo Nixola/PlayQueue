@@ -17,7 +17,7 @@ roll.new = function(min, max)
   self.y = 0
   self.width = 600
   self.height = 512
-  self.scroll = {x = 0, y = 0}
+  self.scroll = {x = 0, y = 0, targetX = 0, targetY = 0}
   self.scale = {
     x = 2,     -- Pixels per 64th
     y = 24,    -- Pixels per row
@@ -32,7 +32,8 @@ end
 
 
 roll.update = function(self, dt)
-
+  self.scroll.x = (self.scroll.targetX + self.scroll.x) / 2
+  self.scroll.y = (self.scroll.targetY + self.scroll.y) / 2
 end
 
 
@@ -43,33 +44,36 @@ roll.draw = function(self)
     -- Vertical grid lines
     lg.setColor(5/16, 5/16, 5/16)
     lg.setLineWidth(1)
-    for x = 0, self.width, self.scale.snap * self.scale.x do
+    local distance = self.scale.snap * self.scale.x
+    for x = self.scroll.x % distance, self.width, self.scale.snap * self.scale.x do
       lg.line(x - .5, 0, x - .5, self.height)
     end
 
     -- Horizontal grid lines
     lg.setColor(3/16, 3/16, 3/16)
     lg.setLineWidth(2)
-    for y = 0, self.height, self.scale.y do
+    for y = self.scroll.y % self.scale.y, self.height, self.scale.y do
       lg.line(0, y, self.width, y)
     end
     lg.setColor(6/16, 6/16, 6/16)
     lg.rectangle("line", 0, 0, self.width, self.height)
+    lg.push()
+      lg.translate(self.scroll.x, self.scroll.y)
+      lg.setColor(0, 1, 0, 5/16)
+      for i, note in ipairs(self.notes) do
+        note:drawMid() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
+      end
 
-    lg.setColor(0, 1, 0, 5/16)
-    for i, note in ipairs(self.notes) do
-      note:drawMid() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
-    end
+      lg.setColor(6/16, 11/16, 6/16)
+      for i, note in ipairs(self.notes) do
+        note:drawStart() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
+      end
 
-    lg.setColor(6/16, 11/16, 6/16)
-    for i, note in ipairs(self.notes) do
-      note:drawStart() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
-    end
-
-    lg.setColor(11/16, 6/16, 6/16)
-    for i, note in ipairs(self.notes) do
-      note:drawEnd() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
-    end
+      lg.setColor(11/16, 6/16, 6/16)
+      for i, note in ipairs(self.notes) do
+        note:drawEnd() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
+      end
+    lg.pop()
 
   lg.pop()
 end
@@ -85,8 +89,8 @@ end
 
 
 roll.mousepressed = function(self, x, y, b)
-  x = x - self.x
-  y = y - self.y
+  x = x - self.x - self.scroll.x
+  y = y - self.y - self.scroll.y
   local shift = lk.isDown("lshift", "rshift")
   if b == 1 and shift then
     local nx = math.round(x / self.scale.x / self.scale.snap) * self.scale.snap
@@ -112,8 +116,10 @@ end
 
 
 roll.mousereleased = function(self, x, y, b)
+  x = x - self.x - self.scroll.x
+  y = y - self.y - self.scroll.y
   if b == 1 and self.creating then
-    if not self.creating:finalize(x - self.x) then
+    if not self.creating:finalize(x) then
       self.notes[#self.notes] = nil
     end
     self.creating = nil
@@ -122,8 +128,10 @@ end
 
 
 roll.mousemoved = function(self, x, y)
+  x = x - self.x - self.scroll.x
+  y = y - self.y - self.scroll.y
   if self.creating then
-    self.creating:finalize(x - self.x)
+    self.creating:finalize(x)
   end
 end
 
@@ -141,5 +149,14 @@ roll.getNotes = function(self, bpm)
   return notes
 end
 
+
+roll.wheelmoved = function(self, wx, wy)
+  if lk.isDown("lshift", "rshift") then
+    wx, wy = wy, wx
+  end
+
+  self.scroll.targetX = math.min(self.scroll.targetX + wx * self.scale.x * 16, 0) -- quarter; TODO magic number
+  self.scroll.targetY = self.scroll.targetY + wy * self.scale.y * 3  -- TODO magic number
+end
 
 return roll

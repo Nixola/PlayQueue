@@ -39,7 +39,7 @@ end
 
 
 love.update = function(dt)
-
+  roll:update(dt)
 end
 
 
@@ -88,4 +88,8 @@ end
 
 love.mousereleased = function(x, y, b)
   roll:mousereleased(x, y, b)
+end
+
+love.wheelmoved = function(wx, wy)
+  roll:wheelmoved(wx, wy)
 end

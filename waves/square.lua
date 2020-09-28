@@ -1,5 +1,5 @@
 return function(phase, frequency) -- code by Zorg. Thanks!
-    if frequency < 384 then
+    if frequency < 384 then -- TODO magic number; related to sampling rate
       phase = phase % (1/frequency)
       return phase * frequency <= 0.5 and 1 or -1
     end

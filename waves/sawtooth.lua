@@ -1,6 +1,5 @@
----[[
 return function(phase, frequency)
-    if frequency < 512 then
+    if frequency < 512 then -- TODO magic number; related to sampling rate
         return (phase * frequency * 2) % 2 - 1
     end
     local result = 0
@@ -13,8 +12,3 @@ return function(phase, frequency)
     end
     return result * math.pi / 4
 end
---]]
---[[
-return function(phase, frequency)
-    return (phase * frequency * 2) % 2 - 1
-end--]]

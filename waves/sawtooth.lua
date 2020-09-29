@@ -1,5 +1,5 @@
 return function(phase, frequency)
-    if frequency < 512 then -- TODO magic number; related to sampling rate
+    if frequency < 768 then -- TODO magic number; related to sampling rate
         return (phase * frequency * 2) % 2 - 1
     end
     local result = 0

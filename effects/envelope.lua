@@ -12,9 +12,10 @@ return function(effects, waveforms)
       local decay = args[2]
       local sustain = args[3]
       local release = args[4]
+      --[[
       if self.state == "delay" then
         self.a = 0
-        if self.time > note.delay then
+        if note.time > note.delay then
           self.time = self.time - note.delay
           self.state = "attack"
         end
@@ -55,7 +56,32 @@ return function(effects, waveforms)
 
       self.time = self.time + 1 / SR
       return {amplitude = self.a}
-    end
+    end--]]
+      if note.state == "release" then
+        if note.time > release then
+          note.state = "end"
+          return
+        end
+        state = "release"
+        time = note.time
+        return {amplitude = sustain * (1 - time/release)}
+      end
 
+      local state, time
+      if note.ttime <= note.delay then
+        state = "delay"
+        return
+      elseif note.ttime <= note.delay + attack then
+        state = "attack"
+        time = note.ttime - note.delay
+        return {amplitude = time / attack}
+      elseif note.ttime <= note.delay + attack + decay then
+        state = "decay"
+        time = note.ttime - note.delay - attack
+        return {amplitude = (1 - time) + sustain * time}
+      else
+        return {amplitude = sustain}
+      end
+    end
   }
 end

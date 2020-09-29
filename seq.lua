@@ -51,16 +51,16 @@ end
 love.keypressed = function(k, kk, isRepeat)
   if k == "space" then
     channel:push{action = "clear"}
-    local n = roll:getNotes(120)
+    local n = roll:getNotes(160)
     SQ:pause()
     for i, note in ipairs(n) do
       channel:push{
         action = "start",
         id = i,
-        instrument = "minkQM",
-        attack = 0.1,
-        decay = 0.05,
-        sustain = 0.8,
+        instrument = "saw",
+        attack = 0.02,
+        decay = 0.3,
+        sustain = 0.6,
         release = 0.2,
         duration = note.duration,
         delay = note.delay,
@@ -69,7 +69,16 @@ love.keypressed = function(k, kk, isRepeat)
         effects = {{type = "vibrato", 6, 1/6}, {type = "chorus"}},
       }
     end
+    if love.keyboard.isDown("lshift", "rshift") then
+      print("Recording...")
+      channel:push{
+        action = "record",
+        stop = "auto"
+      }
+    end
     SQ:play()
+  elseif k == "escape" then
+    channel:push{action = "clear"}
   end
   roll:keypressed(k, kk, isRepeat)
 end
@@ -79,7 +88,22 @@ love.keyreleased = function(k, kk)
 end
 
 love.mousepressed = function(x, y, b)
-  roll:mousepressed(x, y, b)
+  local pitch = roll:mousepressed(x, y, b)
+  if pitch then
+    channel:push {
+      action = "start",
+      instrument = "saw",
+      attack = 0.02,
+      decay = 0.3,
+      sustain = 0.8,
+      release = 0.2,
+      duration = 0,
+      delay = 0,
+      frequency = pitch,
+      amplitude = 1,
+      effects = {{type = "vibrato", 6, 1/6}, {type = "chorus"}},
+    }
+  end
 end
 
 love.mousemoved = function(x, y, dx, dy)

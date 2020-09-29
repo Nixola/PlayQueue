@@ -1,6 +1,6 @@
 local channel, presets = ...
 
-local recording, startRecording, stopRecording
+local recording, startRecording, stopRecording, autoStop
 local writer = love.thread.newThread("writer.lua")
 local writerChannel = love.thread.newChannel()
 
@@ -123,7 +123,9 @@ IDs = {}
 
 local addNote = function(note, id)
   note.state = note.delay > 0 and "delay" or "attack"
-  IDs[id][#IDs[id] + 1] = note
+  if id then
+    IDs[id][#IDs[id] + 1] = note
+  end
   notes[#notes + 1] = note
 end
 
@@ -158,7 +160,9 @@ while true do
     elseif action == "start" then -- start first; gotta go fast
       local id = event.id
 
-      IDs[id] = IDs[id] and error("Starting note already exists") or {}
+      if id then
+        IDs[id] = IDs[id] and error("Starting note already exists") or {}
+      end
 
       for i, voice in ipairs(instrs[event.instrument]) do
         local note = {}
@@ -173,6 +177,7 @@ while true do
         note.delay = event.delay or 0
         note.ttime = -note.delay
         note.frequency = event.frequency + voice.keyshift
+        note.voice = voice
         note.amplitude = event.amplitude * voice.amplitude
         note.func = waveforms[voice.waveform] --instrs[event.instrument].func
         note.effects = table.merge(voice.effects, event.effects)
@@ -196,6 +201,21 @@ while true do
 
         addNote(note, id)
       end
+    elseif action == "change" then
+      for i, note in ipairs(IDs[event.id]) do
+        note.attack = event.attack or note.attack
+        note.decay = event.decay or note.decay
+        note.sustain = event.sustain or note.sustain
+        note.release = event.release or note.release
+        note.duration = event.duration or note.duration
+        if event.delay then
+          note.ttime = note.ttime + note.delay - event.delay
+          note.delay = event.delay
+        end
+        note.frequency = event.frequency and (event.frequency + note.voice.keyshift) or note.frequency
+        note.amplitude = event.amplitude and (event.amplitude * note.voice.amplitude) or note.amplitude
+        note.effects = event.effects and table.merge(note.voice.effects, event.effects) or note.effects
+      end
     elseif action == "release" then
       if not IDs[event.id] then
         error("Released note doesn't exist")
@@ -209,9 +229,17 @@ while true do
         end
         note.duration = note.ttime + note.delay
       end
+    elseif action == "end" then
+      for i, note in ipairs(IDs[event.id]) do
+        note.state = "end"
+      end
+      IDs[event.id] = nil
     elseif action == "record" then
       if not recording then
         startRecording = true
+        if event.stop == "auto" then
+          autoStop = true
+        end
       end
     elseif action == "stop" then
       if recording then
@@ -288,10 +316,12 @@ while true do
 
         if note.state == "release" then
           if time > note.release then
-            for ii, vv in ipairs(IDs[note.id]) do
-              if vv == note then
-                IDs[note.id][ii] = nil
-                break
+            if note.id then
+              for ii, vv in ipairs(IDs[note.id]) do
+                if vv == note then
+                  IDs[note.id][ii] = nil
+                  break
+                end
               end
             end
             --notes[i] = nil
@@ -353,6 +383,10 @@ while true do
       if note.state == "end" then
         table.remove(notes, i)
       end
+    end
+    if recording and autoStop and #notes == 0 then
+      channel:push{action="stop"}
+      print("Recording stopped automatically")
     end
   end
   love.timer.sleep(0.001)

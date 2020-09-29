@@ -37,8 +37,7 @@ function love.load(arrrgs)
   print "arr"
   for i, v in pairs(arrrgs) do print(i, v) end
 
-  table.remove(arg, 1)
-  for i, v in ipairs(arg) do
+  for i, v in ipairs(arrrgs) do
     if v:match("^%-%-") then --option
       config[v:match("^%-%-(.-)$")] = true
     else --par
@@ -46,7 +45,7 @@ function love.load(arrrgs)
       config[o] = v
     end
   end
-  if config.seq then
+  if config.seq or (arg[1] and arg[1]:match("^seq.*")) then
     require "seq"
     return
   end

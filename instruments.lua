@@ -17,7 +17,7 @@ return {
   },
 
   saw = {
-    {amplitude = .6, keyshift = 0, waveform = "sawtooth", effects = {{type = "chorus", .1}}},
+    {amplitude = .6, keyshift = 0, waveform = "sawtooth", effects = {{type = "vibrato", 6, 1/6}, {type = "chorus", .1}}},
   },
 
   square = {

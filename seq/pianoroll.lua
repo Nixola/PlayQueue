@@ -138,9 +138,10 @@ end
 
 
 roll.keypressed = function(self, k, kk, isRepeat)
-  if k == "down" then
+  local shift = lk.isDown("lshift", "rshift")
+  if k == "down" and not shift then
     self.scale.snap = math.min(self.scale.snap * 2, 4)
-  elseif k == "up" then
+  elseif k == "up" and not shift then
     self.scale.snap = math.max(self.scale.snap / 2, 1/8)
   end
 end
@@ -243,8 +244,8 @@ roll.wheelmoved = function(self, wx, wy)
     self.scroll.x = self.scroll.x / self.scale.x
     self.scroll.y = self.scroll.y / self.scale.y
   else
-    self.scroll.targetX = math.min(self.scroll.targetX + wx * 64, 0) -- TODO magic number
-    self.scroll.targetY = math.max(math.min(self.scroll.targetY + wy * self.scale.y * 3, 0), math.min(self.height - (self.max - self.min + 1) * self.scale.y, 0))  -- TODO magic number
+    self.scroll.targetX = math.min(self.scroll.targetX + wx * self.width / 3, 0) -- TODO magic number
+    self.scroll.targetY = math.max(math.min(self.scroll.targetY + wy * self.height / 6, 0), math.min(self.height - (self.max - self.min + 1) * self.scale.y, 0))  -- TODO magic number
   end
 end
 

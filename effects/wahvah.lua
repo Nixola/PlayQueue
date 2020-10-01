@@ -7,6 +7,11 @@ return function(effects, waveforms)
       local waveform = args[3] or "sine"
       local amplitude = (waveforms[waveform](speed, state.ttime) * depth + 1) /2
       return {amplitude = amplitude}
-    end
+    end,
+    args = {
+      {name = "speed", type = "number"},
+      {name = "depth", type = "number"},
+      {name = "wave", type = "wave"},
+    }
   }
 end

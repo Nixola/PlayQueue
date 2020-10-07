@@ -13,16 +13,16 @@ local blacks = {[1] = true, [3] = true, [6] = true, [8] = true, [10] = true}
 local noteNames = {[0] = 
   {{name = "C%d"}, {name = "B#%d", octave = -1}, {name = "Dbb%d"}},
   {{name ="C#%d"}, {name ="Db%d"}},
-  {{name ="D%d"}, {name ="C##%d"}, {name ="Ebb%d"}},
+  {{name ="D%d"}, {name ="C×%d"}, {name ="Ebb%d"}},
   {{name ="D#%d"}, {name ="Eb%d"}},
-  {{name ="E%d"}, {name ="D##%d"}, {name ="Fb%d"}},
+  {{name ="E%d"}, {name ="D×%d"}, {name ="Fb%d"}},
   {{name = "F%d"}, {name = "E#%d"}, {name = "Gbb%d"}},
   {{name = "F#%d"}, {name = "Gb%d"}},
-  {{name = "G%d"}, {name = "F##%d"}, {name = "Abb%d"}},
+  {{name = "G%d"}, {name = "F×%d"}, {name = "Abb%d"}},
   {{name = "G#%d"}, {name = "Ab%d"}},
-  {{name = "A%d"}, {name = "G##%d"}, {name = "Bbb%d"}},
+  {{name = "A%d"}, {name = "G×%d"}, {name = "Bbb%d"}},
   {{name = "A#%d"}, {name = "Bb%d"}},
-  {{name = "B%d"}, {name = "A##%d"}, {name = "Cb%d", octave = 1}}
+  {{name = "B%d"}, {name = "A×%d"}, {name = "Cb%d", octave = 1}}
 }
 
 roll.new = function(min, max)
@@ -45,6 +45,9 @@ roll.new = function(min, max)
 
   self.creating = nil
 
+  self.playing = false
+  self.time = 0
+
   return self
 end
 
@@ -57,8 +60,16 @@ end
 
 
 roll.update = function(self, dt)
+  -- TODO: proper smoothing
   self.scroll.x = (self.scroll.targetX + self.scroll.x) / 2
   self.scroll.y = (self.scroll.targetY + self.scroll.y) / 2
+
+  -- Updating play timer
+  if self.playing then
+    self.time = self.time + dt
+    -- TODO: scroll to playback head
+    -- TODO: stop if all notes have ended
+  end
 end
 
 
@@ -116,7 +127,7 @@ roll.draw = function(self)
     lg.setScissor(self.x, self.y, self.width, self.height)
     lg.push()
       lg.translate(self.scroll.x, self.scroll.y)
-      lg.setColor(0, 1, 0, 5/16)
+      lg.setColor(0, 1, 0, 6/16)
       for i, note in ipairs(self.notes[self.set]) do
         note:drawMid() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
@@ -126,9 +137,15 @@ roll.draw = function(self)
         note:drawStart() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
 
-      lg.setColor(11/16, 6/16, 6/16)
+      lg.setColor(2/16, 4/16, 2/16)
       for i, note in ipairs(self.notes[self.set]) do
         note:drawEnd() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
+      end
+
+      if self.playing then
+        lg.setColor(8/16, 8/16, 8/16)
+        local x = self.time * self.scale.x * self.bpm / 60
+        lg.line(x, 0, x, 1080) -- FIX THIS
       end
     lg.pop()
     lg.setScissor()
@@ -231,6 +248,17 @@ roll.getNotes = function(self, bpm, set)
   return notes
 end
 
+
+roll.play = function(self, bpm)
+  self.playing = true
+  self.bpm = bpm
+  self.time = 0
+end
+
+
+roll.stop = function(self)
+  self.playing = false
+end
 
 roll.wheelmoved = function(self, wx, wy)
   if lk.isDown("lshift", "rshift") then

@@ -119,8 +119,10 @@ love.keypressed = function(k, kk, isRepeat)
       }
     end
     SQ:play()
+    roll:play(bpm)
   elseif k == "escape" then
     channel:push{action = "clear"}
+    roll:stop()
   elseif k == "up" and shift then
     bpm = bpm + 1
     print("BPM:", bpm)

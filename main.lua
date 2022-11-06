@@ -178,7 +178,7 @@ function love.keypressed(kk,k, isRepeat)
   end
 
   if k == "space" then
-    local note = love.math.random(40, 51)
+    local note = love.math.random(64, 64+23)
     for i, v in pairs(keys) do
       if v == note then
         k = i

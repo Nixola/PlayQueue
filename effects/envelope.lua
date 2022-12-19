@@ -82,8 +82,7 @@ return function(effects, waveforms)
       else
         return {amplitude = sustain}
       end
-    end
-  },
+    end,
 
   args = {
     {name = "attack", type = "number"},
@@ -91,4 +90,5 @@ return function(effects, waveforms)
     {name = "sustain", type = "number"},
     {name = "release", type = "number"},
   }
+}
 end

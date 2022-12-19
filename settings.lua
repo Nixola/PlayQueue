@@ -1,5 +1,5 @@
 local settings = {}
-settings.list = {"attack", "decay", "sustain", "release", "duration"}
+settings.list = {"attack", "decay", "sustain", "release", "duration", "chorus"}
 settings.selected = 0
 settings.keys = {up = true, down = true, left = true, right = true, delete = true, escape = true}
 settings.defaults = {}

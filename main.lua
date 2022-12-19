@@ -92,22 +92,25 @@ function love.load(arrrgs)
   config.sustain = tonumber(config.sustain) or 0.8
   config.release = tonumber(config.release) or 0.05
   config.duration = tonumber(config.duration)
+  config.chorus = tonumber(config.chorus) or 0
 
   settings.attack = config.attack
   settings.decay = config.decay
   settings.sustain = config.sustain
   settings.release = config.release
   settings.duration = config.duration
+  settings.chorus = config.chorus
 
   settings.defaults.attack = config.attack
   settings.defaults.decay = config.decay
   settings.defaults.sustain = config.sustain
   settings.defaults.release = config.release
   settings.defaults.duration = config.duration
+  settings.defaults.chorus = config.chorus
 
   instruments = {
     {name = "sine", display = "Sine"},
-    {name = "organ", display = "Organ", attack = 0.1},
+    {name = "organ", display = "Organ", attack = 0.1, chorus = 0.17},
     {name = "flute", display = "Voice (?)", attack = 0.1},
     {name = "saw", display = "Saw wave"},
     {name = "square", display = "Square wave"},
@@ -198,6 +201,9 @@ function love.keypressed(kk,k, isRepeat)
     if shift then
       effects[1] = {type = "vibrato", 6, 1/4}
     end
+    if settings.chorus > 0 then
+      effects[#effects+1] = {type = "chorus", settings.chorus}
+    end
     channel:push{
       action = "start",
       id = notes.number,
@@ -225,6 +231,7 @@ function love.keypressed(kk,k, isRepeat)
         instruments[n].sustain = settings.sustain or settings.defaults.sustain or config.sustain
         instruments[n].release = settings.release or settings.defaults.release or config.release
         instruments[n].duration = settings.duration or settings.defaults.duration or config.duration
+        instruments[n].chorus = settings.chorus or settings.defaults.chorus or config.chorus
       end
     else
       if instruments[n] then
@@ -234,6 +241,7 @@ function love.keypressed(kk,k, isRepeat)
         settings.sustain = instruments[n].sustain or config.sustain
         settings.release = instruments[n].release or config.release
         settings.duration = instruments[n].duration or config.duration
+        settings.chorus = instruments[n].chorus or config.chorus
       end
     end
   end

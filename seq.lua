@@ -99,7 +99,7 @@ love.keypressed = function(k, kk, isRepeat)
       channel:push{
         action = "start",
         --id = i,
-        instrument = "saw",
+        instrument = "square",
         attack = settings.attack,
         decay = settings.decay,
         sustain = settings.sustain,
@@ -147,7 +147,7 @@ love.mousepressed = function(x, y, b)
   if pitch then
     channel:push {
       action = "start",
-      instrument = "minkQM",
+      instrument = "square",
       attack = 0.1,
       decay = 0.3,
       sustain = 0.8,

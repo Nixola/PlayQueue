@@ -88,14 +88,15 @@ love.draw = function()
 end
 
 
-love.keypressed = function(k, kk, isRepeat)
-  local shift = love.keyboard.isDown("lshift", "rshift")
-  if k == "space" then
-    channel:push{action = "clear"}
-    local n = roll:getNotes(bpm)
-    SQ:pause()
-    local settings = panel:getSettings()
-    for i, note in ipairs(n) do
+local play = function(start, record)
+  start = start or 0
+  print(start)
+  channel:push{action = "clear"}
+  local n = roll:getNotes(bpm)
+  SQ:pause()
+  local settings = panel:getSettings()
+  for i, note in ipairs(n) do
+    if note.delay + note.duration > start then
       channel:push{
         action = "start",
         --id = i,
@@ -105,21 +106,29 @@ love.keypressed = function(k, kk, isRepeat)
         sustain = settings.sustain,
         release = settings.release,
         duration = note.duration,
-        delay = note.delay,
+        delay = note.delay - start,
         frequency = note.pitch,
         amplitude = 0.6,
         effects = {{type = "vibrato", 6, 1/6}, {type = "flanger"}},
       }
     end
-    if shift then
-      print("Recording...")
-      channel:push{
-        action = "record",
-        stop = "auto"
-      }
-    end
-    SQ:play()
-    roll:play(bpm)
+  end
+  if shift then
+    print("Recording...")
+    channel:push{
+      action = "record",
+      stop = "auto"
+    }
+  end
+  SQ:play()
+  roll:play(bpm)
+  roll.time = start
+end
+
+love.keypressed = function(k, kk, isRepeat)
+  local shift = love.keyboard.isDown("lshift", "rshift")
+  if k == "space" then
+    play(0, shift)
   elseif k == "escape" then
     channel:push{action = "clear"}
     roll:stop()
@@ -160,6 +169,11 @@ love.mousepressed = function(x, y, b)
     }
   end
   gui:mousepressed(x, y, b)
+  if b == 3 then
+    local start = (x - roll.x - roll.scroll.x) / roll.scale.x / bpm * 60
+    print(start)
+    play(start)
+  end
 end
 
 love.mousemoved = function(x, y, dx, dy)

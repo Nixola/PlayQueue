@@ -9,6 +9,13 @@ local lk = love.keyboard
 
 math.round = function(x) return math.floor(x + .5) end
 
+local aabb = function (x1,y1,w1,h1, x2,y2,w2,h2)
+  return x1 < x2+w2 and
+         x2 < x1+w1 and
+         y1 < y2+h2 and
+         y2 < y1+h1
+end
+
 local blacks = {[1] = true, [3] = true, [6] = true, [8] = true, [10] = true}
 local noteNames = {[0] = 
   {{name = "C%d"}, {name = "B#%d", octave = -1}, {name = "Dbb%d"}},
@@ -142,6 +149,14 @@ roll.draw = function(self)
         note:drawEnd() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
 
+      local selection = self.selecting or self.selected
+      if selection and selection.list then
+        lg.setColor(1, 1, 1, 4/16)
+        for i, note in ipairs(selection.list) do
+          note:drawMid()
+        end
+      end
+
       if self.playing then
         lg.setColor(8/16, 8/16, 8/16)
         local x = self.time * self.scale.x * self.bpm / 60
@@ -170,12 +185,17 @@ roll.mousepressed = function(self, x, y, b)
   x = x - self.x - self.scroll.x
   y = y - self.y - self.scroll.y
   local shift = lk.isDown("lshift", "rshift")
-  if b == 1 and shift and uiX >= 0 and uiX <= self.width then
-    local nx = math.round(x / self.scale.x / self.scale.snap) * self.scale.snap
-    local ny = math.floor(y / self.scale.y)
-    local note = Note.new(nx, ny, self.scale)
-    self.notes[self.set][#self.notes[self.set] + 1] = note
-    self.creating = note
+  if b == 1 and uiX >= 0 and uiX <= self.width then
+    if shift then
+      local nx = math.round(x / self.scale.x / self.scale.snap) * self.scale.snap
+      local ny = math.floor(y / self.scale.y)
+      local note = Note.new(nx, ny, self.scale)
+      self.notes[self.set][#self.notes[self.set] + 1] = note
+      self.creating = note
+    else
+      self.selecting = {x0 = x, y0 = y}
+      self.selected = nil
+    end
   elseif b == 2 then
     for i = #self.notes[self.set], 1, -1 do
       local note = self.notes[self.set][i]
@@ -211,11 +231,17 @@ end
 roll.mousereleased = function(self, x, y, b)
   x = x - self.x - self.scroll.x
   y = y - self.y - self.scroll.y
-  if b == 1 and self.creating then
-    if not self.creating:finalize(x) then
-      self.notes[self.set][#self.notes[self.set]] = nil
+  if b == 1 then
+    if self.creating then
+      if not self.creating:finalize(x) then
+        self.notes[self.set][#self.notes[self.set]] = nil
+      end
+      self.creating = nil
     end
-    self.creating = nil
+    if self.selecting then
+      self.selected = self.selecting
+      self.selecting = nil
+    end
   end
 end
 
@@ -225,6 +251,23 @@ roll.mousemoved = function(self, x, y)
   y = y - self.y - self.scroll.y
   if self.creating then
     self.creating:finalize(x)
+  elseif self.selecting then
+    self.selecting.x1 = x
+    self.selecting.y1 = y
+    self.selecting.list = {}
+    local sx, sy, sw, sh = math.min(self.selecting.x0, self.selecting.x1), math.min(self.selecting.y0, self.selecting.y1), 
+                           math.abs(self.selecting.x0 - self.selecting.x1), math.abs(self.selecting.y0 - self.selecting.y1)
+    for i = #self.notes[self.set], 1, -1 do
+      local note = self.notes[self.set][i]
+      local nx = note.x * self.scale.x
+      local ny = note.y * self.scale.y
+      local nw = note.length * self.scale.x
+      local nh = self.scale.y
+      if aabb(nx, ny, nw, nh, sx, sy, sw, sh) then
+        self.selecting.list[#self.selecting.list + 1] = note
+        self.selecting.list[note] = #self.selecting.list
+      end
+    end
   end
 end
 

@@ -19,6 +19,12 @@ note.finalize = function(self, x2)
   return true
 end
 
+note.clone = function(self, offset)
+  local n = self.new(self.x - offset, self.y, self.scale)
+  n.length = self.length
+  return n
+end
+
 note.drawStart = function(self)
   love.graphics.rectangle("fill", self.x * self.scale.x, self.y * self.scale.y + 1, 2, self.scale.y - 2)
 end

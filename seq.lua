@@ -112,7 +112,7 @@ local play = function(start, record)
       }
     end
   end
-  if shift then
+  if record then
     print("Recording...")
     channel:push{
       action = "record",

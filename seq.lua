@@ -90,7 +90,6 @@ end
 
 local play = function(start, record)
   start = start or 0
-  print(start)
   channel:push{action = "clear"}
   local n = roll:getNotes(bpm)
   SQ:pause()
@@ -171,7 +170,6 @@ love.mousepressed = function(x, y, b)
   gui:mousepressed(x, y, b)
   if b == 3 then
     local start = (x - roll.x - roll.scroll.x) / roll.scale.x / bpm * 60
-    print(start)
     play(start)
   end
 end

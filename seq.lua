@@ -108,7 +108,7 @@ local play = function(start, record)
         delay = note.delay - start,
         frequency = note.pitch,
         amplitude = 0.6,
-        effects = {{type = "vibrato", 6, 1/6}, {type = "flanger"}},
+        effects = {--[[]{type = "vibrato", 6, 1/6}, {type = "flanger"}--[[]]},
       }
     end
   end

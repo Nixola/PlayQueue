@@ -171,10 +171,29 @@ end
 
 roll.keypressed = function(self, k, kk, isRepeat)
   local shift = lk.isDown("lshift", "rshift")
+  local ctrl = lk.isDown("lctrl", "rctrl")
   if k == "down" and not shift then
     self.scale.snap = math.min(self.scale.snap * 2, 4)
   elseif k == "up" and not shift then
     self.scale.snap = math.max(self.scale.snap / 2, 1/8)
+  elseif ctrl and k == "c" then
+    local selection = self.selecting or self.selected
+    if selection and selection.list then
+      self.copied = selection.list
+      self.copied.offset = math.huge
+      for i, v in ipairs(self.copied) do
+        self.copied.offset = math.min(self.copied.offset, v.x)
+      end
+    end
+  elseif ctrl and k == "v" then
+    if self.copied then
+      local mx, my = love.mouse.getPosition()
+      mx = mx - self.x - self.scroll.x
+      local nx = math.round(mx / self.scale.x / self.scale.snap) * self.scale.snap
+      for i, v in ipairs(self.copied) do
+        table.insert(self.notes[self.set], v:clone(self.copied.offset - nx))
+      end
+    end
   end
 end
 

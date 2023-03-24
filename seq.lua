@@ -1,6 +1,8 @@
 love.graphics.setBackgroundColor(2/16, 2/16, 2/16)
 
 local roll = require "seq.pianoroll".new()
+local modes = require "seq.modes"
+modes:init(roll)
 roll.x, roll.y = 64, 64
 
 local instruments = require "instruments"
@@ -85,6 +87,7 @@ end
 love.draw = function()
   roll:draw()
   gui:draw()
+  modes:draw()
 end
 
 
@@ -125,6 +128,7 @@ local play = function(start, record)
 end
 
 love.keypressed = function(k, kk, isRepeat)
+  modes:keypressed(k, kk, isRepeat)
   local shift = love.keyboard.isDown("lshift", "rshift")
   if k == "space" then
     play(0, shift)

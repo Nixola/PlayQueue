@@ -160,7 +160,16 @@ roll.draw = function(self)
       if self.playing then
         lg.setColor(8/16, 8/16, 8/16)
         local x = self.time * self.scale.x * self.bpm / 60
-        lg.line(x, 0, x, 1080) -- FIX THIS
+        lg.line(x, -self.scroll.y, x, self.height - self.scroll.y)
+      end
+
+      if self.selecting and self.selecting.x1 then
+        local sx, sy, sw, sh = math.min(self.selecting.x0, self.selecting.x1), math.min(self.selecting.y0, self.selecting.y1), 
+                               math.abs(self.selecting.x0 - self.selecting.x1), math.abs(self.selecting.y0 - self.selecting.y1)
+        love.graphics.setColor(1, 1, 1, 2/16)
+        love.graphics.rectangle("fill", sx, sy, sw, sh)
+        love.graphics.setColor(1, 1, 1, 3/16)
+        love.graphics.rectangle("line", sx, sy, sw, sh)
       end
     lg.pop()
     lg.setScissor()
@@ -223,6 +232,16 @@ roll.mousepressed = function(self, x, y, b)
       local nw = note.length * self.scale.x
       local nh = self.scale.y
       if x >= nx and x <= nx + nw and y >= ny and y <= ny + nh then
+        local selection = self.selecting or self.selected
+        selection = selection and selection.list
+        if selection and selection[note] then
+          selection[note] = nil
+          for i, v in ipairs(selection) do
+            if v == note then
+              table.remove(selection, i)
+            end
+          end
+        end
         table.remove(self.notes[self.set], i)
         break
       end

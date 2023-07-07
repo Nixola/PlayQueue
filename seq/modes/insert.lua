@@ -4,23 +4,14 @@ local pianoRoll = ...
 
 local insert = {
 	name = "Insert",
-	keys = {key = "i", mods = {ctrl = false, shift = false, alt = false}}
-}
-
-local lengths = {
-	-- 64th
-	-- 32th
-	-- 16th
-	-- 8th
-	-- 4th
-	-- half
-	-- whole
+	keys = {key = "i", ctrl = false, shift = false, alt = false}
 }
 
 
 insert.keypressed = function(self, k, kk, isRepeat)
-	if tonumber(k) then
+	if tonumber(k) and tonumber(k) > 0 then
 		local mx, my = love.mouse.getPosition()
+		if not pianoRoll:aabb(mx, my, 0, 0) then return end
 		mx = mx - pianoRoll.x - pianoRoll.scroll.x
 		my = my - pianoRoll.y - pianoRoll.scroll.y
 		local nx = math.round(mx / pianoRoll.scale.x / pianoRoll.scale.snap) * pianoRoll.scale.snap

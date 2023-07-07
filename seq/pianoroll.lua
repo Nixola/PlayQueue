@@ -16,6 +16,10 @@ local aabb = function (x1,y1,w1,h1, x2,y2,w2,h2)
          y2 < y1+h1
 end
 
+roll.aabb = function(self, x, y, w, h)
+  return aabb(x, y, w, h, self.x, self.y, self.width, self.height)
+end
+
 local blacks = {[1] = true, [3] = true, [6] = true, [8] = true, [10] = true}
 local noteNames = {[0] = 
   {{name = "C%d"}, {name = "B#%d", octave = -1}, {name = "Dbb%d"}},

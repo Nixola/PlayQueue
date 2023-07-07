@@ -2,7 +2,7 @@ love.graphics.setBackgroundColor(2/16, 2/16, 2/16)
 
 local roll = require "seq.pianoroll".new()
 local modes = require "seq.modes"
-modes:init(roll)
+
 roll.x, roll.y = 64, 64
 
 local instruments = require "instruments"
@@ -25,6 +25,8 @@ channel:push(SD)
 
 local gui = require("gui.src"):new()
 local guiElements = {}
+
+modes:init(roll, guiElements)
 
 local waveforms = {}
 local effects = {}

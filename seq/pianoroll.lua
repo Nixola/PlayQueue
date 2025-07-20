@@ -39,7 +39,7 @@ local noteNames = {[0] =
 roll.new = function(min, max)
   local self = setmetatable({}, mt)
   self.min = min or 36
-  self.max = max or 84
+  self.max = max or 108
   self.x = 0
   self.y = 0
   self.margin = 32

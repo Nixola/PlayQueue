@@ -115,8 +115,8 @@ function love.load(arrrgs)
     {name = "saw", display = "Saw wave"},
     {name = "square", display = "Square wave"},
     {name = "minkQM", display = "Strings...?", attack = 0.1},
-    {name = "minkQM1", display = "Pizz. strings...???", attack = 0, decay = 0.15, sustain = 0.2, duration = 0},
-    {name = "vibraphone", display = "Vibraphone - like thing???", attack = 0, decay = .3, sustain = 0.1, duration = 0},
+    {name = "minkQM1", display = "Pizz. strings...???", attack = 0, decay = 3, sustain = 0.01, duration = 0, release = 0.2},
+    {name = "vibraphone", display = "Vibraphone", attack = 0.001, decay = 5, sustain = 0.2, duration = 0, release = 0.5},
     {name = "test", display = "I don't even know", attack = 0, release = .2},
   }
 

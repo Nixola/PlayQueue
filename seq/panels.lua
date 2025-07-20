@@ -22,15 +22,19 @@ panels.init = function(self, gui, waveforms, effects)
 
   self.elements.attack = gui:add("textLine", baseX + padding, padding, 48, nil, "attack", nil, 0.05)
   self.elements.attack.validate = validateNumber
+  self.elements.attackLabel = gui:add("text", baseX + padding * 1.5 + 48, padding, "Attack", {})
 
   self.elements.decay = gui:add("textLine", baseX + padding, padding + padding, 48, nil, "decay", nil, 0.01)
   self.elements.decay.validate = validateNumber
+  self.elements.decayLabel = gui:add("text", baseX + padding * 1.5 + 48, padding + padding, "Decay", {})
 
   self.elements.sustain = gui:add("textLine", baseX + padding, padding + 2*padding, 48, nil, "sustain", nil, 0.8)
   self.elements.sustain.validate = validateNumber
+  self.elements.sustainLabel = gui:add("text", baseX + padding * 1.5 + 48, padding + 2*padding, "Sustain", {})
 
   self.elements.release = gui:add("textLine", baseX + padding, padding + 3*padding, 48, nil, "release", nil, 0.1)
   self.elements.release.validate = validateNumber
+  self.elements.releaseLabel = gui:add("text", baseX + padding * 1.5 + 48, padding + 3*padding, "Release", {})
 end
 
 
@@ -49,6 +53,11 @@ panels.resize = function(self, w, h)
   self.elements.decay.x = w - self.width + padding
   self.elements.sustain.x = w - self.width + padding
   self.elements.release.x = w - self.width + padding
+
+  self.elements.attackLabel.x = w - self.width + padding * 1.5 + 48
+  self.elements.decayLabel.x = w - self.width + padding * 1.5 + 48
+  self.elements.sustainLabel.x = w - self.width + padding * 1.5 + 48
+  self.elements.releaseLabel.x = w - self.width + padding * 1.5 + 48
 end
 
 return panels

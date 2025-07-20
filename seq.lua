@@ -104,7 +104,7 @@ local play = function(start, record)
       channel:push{
         action = "start",
         --id = i,
-        instrument = "square",
+        instrument = "vibraphone",
         attack = settings.attack,
         decay = settings.decay,
         sustain = settings.sustain,

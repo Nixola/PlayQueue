@@ -273,6 +273,12 @@ while true do
 
         local a = 0
 
+        if note.duration and note.ttime > note.duration and not (note.state == "release" or note.state == "end") then
+          note.state = "release"
+          note.time = 0
+          time = 0
+        end
+
         if note.state == "delay" then
           --if time > note.delay then
           if note.ttime > 0 then
@@ -305,11 +311,6 @@ while true do
         end
 
         if note.state == "sustain" then
-          if note.duration and note.ttime > note.duration then
-            note.state = "release"
-            note.time = 0
-            time = 0
-          end
           a = note.sustain
           notesN = notesN + 1
         end
@@ -354,6 +355,7 @@ while true do
           local f1 = 440 * 2^((n - 69) / 12)
           note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
           sample = sample + note.func(note.phase, f1) * a * note.amplitude
+
 
         end
         note.time = time

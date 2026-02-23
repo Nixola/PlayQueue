@@ -1,9 +1,21 @@
+local utils = require "seq.utils"
+
 love.graphics.setBackgroundColor(2/16, 2/16, 2/16)
 
-local roll = require "seq.pianoroll".new()
+local rolls = {}
+for i = 1, 12 do
+    rolls[i] = require "seq.pianoroll".new(i)
+    local v = rolls[i]
+    v.x, v.y = 64, 64
+    v.scroll = rolls[1].scroll
+    v.scale = rolls[1].scale
+    v.playback = rolls[1].playback
+end
+local selectedRoll = 1
+--local roll = require "seq.pianoroll".new()
 local modes = require "seq.modes"
 
-roll.x, roll.y = 64, 64
+--roll.x, roll.y = 64, 64
 
 local instruments = require "instruments"
 
@@ -24,9 +36,45 @@ channel:push(SQ)
 channel:push(SD)
 
 local gui = require("gui.src"):new()
-local guiElements = {}
+local guiElements = {pianoRollButtons = {}}
 
-modes:init(roll, guiElements)
+local selectPianoRoll = function(n)
+  local oldButton = guiElements.pianoRollButtons[selectedRoll]
+  local newButton = guiElements.pianoRollButtons[n]
+  local oldRoll = rolls[selectedRoll]
+  local newRoll = rolls[n]
+
+  oldRoll.settings = panel:getSettings()
+  oldButton.style.idle[4] = 6/16
+  oldButton.style.hover[4] = 6/16
+  oldButton.style.active[4] = 6/16
+  oldButton.style.clicked[4] = 6/16
+ 
+  panel:setSettings(newRoll.settings)
+  newButton.style.idle[4] = 9/16
+  newButton.style.hover[4] = 9/16
+  newButton.style.active[4] = 9/16
+  newButton.style.clicked[4] = 9/16
+
+  selectedRoll = n
+end
+
+for i = 1, 12 do
+--  local hue = (1/3 + (i-1) * 0.45) % 1
+  local hue = (1/3 + (i-1)/12) % 1
+  local r, g, b = utils.HSL(hue, 1, 0.6)
+  local button = gui:add("button", 80 + 27 * i, 16, i, nil, 24, nil)
+  button.style.idle = {utils.HSL(hue, 1, 0.6, 6/16)}
+  button.style.hover = {utils.HSL(hue, 1, 0.8, 6/16)}
+  button.style.active = {utils.HSL(hue, 1, 0.4, 6/16)}
+  button.style.clicked = {utils.HSL(hue, 1, 0.3, 6/16)}
+  guiElements.pianoRollButtons[i] = button
+  button.callback = function()
+    selectPianoRoll(i)
+  end
+end
+
+modes:init(rolls, guiElements)
 
 local waveforms = {}
 local effects = {}
@@ -37,7 +85,9 @@ for i, filename in ipairs(love.filesystem.getDirectoryItems("effects")) do
   effects[#effects + 1] = filename:match("^(.-)%.lua$")
 end
 
-panel:init(gui, waveforms, effects)
+panel:init(gui, instruments, effects)
+
+selectPianoRoll(1)
 
 local bpm = 180
 do
@@ -55,8 +105,6 @@ do
     return text:match("^%s*(.-)%s*$")
   end
   guiElements.bpm = textLine
-
-
 end
 
 love.keyboard.setKeyRepeat(true)
@@ -81,13 +129,15 @@ end
 
 
 love.update = function(dt)
-  roll:update(dt)
+  rolls[selectedRoll]:update(dt)
   gui:update(dt)
 end
 
 
 love.draw = function()
-  roll:draw()
+  for i, roll in ipairs(rolls) do
+    roll:draw(selectedRoll == i)
+  end
   gui:draw()
   modes:draw()
 end
@@ -96,25 +146,29 @@ end
 local play = function(start, record)
   start = start or 0
   channel:push{action = "clear"}
-  local n = roll:getNotes(bpm)
-  SQ:pause()
-  local settings = panel:getSettings()
-  for i, note in ipairs(n) do
-    if note.delay + note.duration > start then
-      channel:push{
-        action = "start",
-        --id = i,
-        instrument = "vibraphone",
-        attack = settings.attack,
-        decay = settings.decay,
-        sustain = settings.sustain,
-        release = settings.release,
-        duration = note.duration,
-        delay = note.delay - start,
-        frequency = note.pitch,
-        amplitude = 0.6,
-        effects = {--[[]{type = "vibrato", 6, 1/6}, {type = "flanger"}--[[]]},
-      }
+  rolls[selectedRoll].settings = panel:getSettings()
+  for i, roll in ipairs(rolls) do
+    local n = roll:getNotes(bpm)
+    SQ:pause()
+    print(roll.settings)
+    local settings = roll.settings or panel:getSettings()
+    for i, note in ipairs(n) do
+      if note.delay + note.duration > start then
+        channel:push{
+          action = "start",
+          --id = i,
+          instrument = settings.instrument,
+          attack = settings.attack,
+          decay = settings.decay,
+          sustain = settings.sustain,
+          release = settings.release,
+          duration = note.duration,
+          delay = note.delay - start,
+          frequency = note.pitch,
+          amplitude = settings.amplitude,
+          effects = {--[[]{type = "vibrato", 6, 1/6}, {type = "flanger"}--[[]]},
+        }
+      end
     end
   end
   if record then
@@ -125,18 +179,26 @@ local play = function(start, record)
     }
   end
   SQ:play()
-  roll:play(bpm)
-  roll.time = start
+  rolls[selectedRoll]:play(bpm)
+  rolls[selectedRoll].playback.time = start
 end
 
 love.keypressed = function(k, kk, isRepeat)
-  modes:keypressed(k, kk, isRepeat)
+  if k:match("f(%d%d?)") then
+    local n = tonumber(k:match("f(%d%d?)"))
+    if n > 0 and n < 13 then
+      selectPianoRoll(n)
+      return
+    end
+  end
+  print(selectedRoll, rolls[selectedRoll])
+  modes:keypressed(k, kk, isRepeat, rolls[selectedRoll])
   local shift = love.keyboard.isDown("lshift", "rshift")
   if k == "space" then
     play(0, shift)
   elseif k == "escape" then
     channel:push{action = "clear"}
-    roll:stop()
+    rolls[selectedRoll]:stop()
   elseif k == "up" and shift then
     bpm = bpm + 1
     print("BPM:", bpm)
@@ -144,7 +206,7 @@ love.keypressed = function(k, kk, isRepeat)
     bpm = bpm - 1
     print("BPM:", bpm)
   end
-  roll:keypressed(k, kk, isRepeat)
+  rolls[selectedRoll]:keypressed(k, kk, isRepeat)
   gui:keypressed(k, kk, isRepeat)
 end
 
@@ -157,7 +219,7 @@ love.textinput = function(char)
 end
 
 love.mousepressed = function(x, y, b)
-  local pitch = roll:mousepressed(x, y, b)
+  local pitch = rolls[selectedRoll]:mousepressed(x, y, b)
   if pitch then
     channel:push {
       action = "start",
@@ -175,28 +237,30 @@ love.mousepressed = function(x, y, b)
   end
   gui:mousepressed(x, y, b)
   if b == 3 then
-    local start = (x - roll.x - roll.scroll.x) / roll.scale.x / bpm * 60
+    local start = (x - rolls[selectedRoll].x - rolls[selectedRoll].scroll.x) / rolls[selectedRoll].scale.x / bpm * 60
     play(start)
   end
 end
 
 love.mousemoved = function(x, y, dx, dy)
-  roll:mousemoved(x, y)
+  rolls[selectedRoll]:mousemoved(x, y)
 end
 
 love.mousereleased = function(x, y, b)
-  roll:mousereleased(x, y, b)
+  rolls[selectedRoll]:mousereleased(x, y, b)
   gui:mousereleased(x, y, b)
 end
 
 love.wheelmoved = function(wx, wy)
-  roll:wheelmoved(wx, wy)
+  rolls[selectedRoll]:wheelmoved(wx, wy)
   gui:wheelmoved(wx, wy)
 end
 
 love.resize = function(w, h)
-  roll.width = w - roll.x - 256
-  roll.height = h - roll.y - 64
+  for i, roll in ipairs(rolls) do
+    roll.width = w - roll.x - 256
+    roll.height = h - roll.y - 64
+  end
 
   panel:resize(w, h)
 end

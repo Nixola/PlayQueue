@@ -59,12 +59,12 @@ modes.mousepressed = function(self, x, y, b)
 end
 
 
-modes.keypressed = function(self, k, kk, isRepeat)
+modes.keypressed = function(self, k, kk, isRepeat, ...)
 	if k == "escape" then
 		self:switch("Normal")
 	end
 	if self.mode.keypressed then
-		self.mode:keypressed(k, kk, isRepeat)
+		self.mode:keypressed(k, kk, isRepeat, ...)
 	end
 end
 

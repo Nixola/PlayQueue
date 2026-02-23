@@ -1,6 +1,6 @@
 local Note = require "seq.note"
 
-local pianoRoll = ...
+--local pianoRoll = ...
 
 local insert = {
 	name = "Insert",
@@ -8,7 +8,7 @@ local insert = {
 }
 
 
-insert.keypressed = function(self, k, kk, isRepeat)
+insert.keypressed = function(self, k, kk, isRepeat, pianoRoll)
 	if tonumber(k) and tonumber(k) > 0 then
 		local mx, my = love.mouse.getPosition()
 		if not pianoRoll:aabb(mx, my, 0, 0) then return end
@@ -17,7 +17,8 @@ insert.keypressed = function(self, k, kk, isRepeat)
 		local nx = math.round(mx / pianoRoll.scale.x / pianoRoll.scale.snap) * pianoRoll.scale.snap
     local ny = math.floor(my / pianoRoll.scale.y)
     local note = Note.new(nx, ny, pianoRoll.scale)
-    pianoRoll.notes[pianoRoll.set][#pianoRoll.notes[pianoRoll.set] + 1] = note
+    pianoRoll:addNotes(note)
+--    pianoRoll.notes[pianoRoll.set][#pianoRoll.notes[pianoRoll.set] + 1] = note
     note.length = 2 ^ (tonumber(k) - 5)
   end
 end

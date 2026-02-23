@@ -51,9 +51,10 @@ return {
   },
 
   vibraphone = {
+    envelope = {attack = 0.001, decay = 0.5, sustain = 0.8, release = 0.6},
   	{amplitude = 1, keyshift = 0, waveform = "sine", effects = {{type = "vibrato", 6, 1/6}} },
-  	{amplitude = .02, keyshift = overtone(4) --[[ ±1?? ]], waveform = "sine", effects = {{type = "vibrato", 6, 1/9}} },
-  	{amplitude = .01, keyshift = overtone(32/3) --[[41]], waveform = "sine", effects = {{type = "vibrato", 6, 1/9}} },
+  	{amplitude = 1/2, keyshift = overtone(4) --[[ ±1?? ]], waveform = "sine", effects = {{type = "vibrato", 6, 1/9}} },
+  	{amplitude = 1/3, keyshift = overtone(32/3) --[[41]], waveform = "sine", effects = {{type = "vibrato", 6, 1/9}} },
   },
 
   test = {

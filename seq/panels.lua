@@ -9,9 +9,9 @@ local validateNumber = function(text)
   return text:match("^%s*(.-)%s*$")
 end
 
-panels.init = function(self, gui, waveforms, effects)
+panels.init = function(self, gui, instruments, effects)
   self.width = 256
-  self.waveforms = waveforms
+  self.instruments = instruments
   self.effects = effects
 
   local screenWidth = love.graphics.getWidth()
@@ -35,6 +35,24 @@ panels.init = function(self, gui, waveforms, effects)
   self.elements.release = gui:add("textLine", baseX + padding, padding + 3*padding, 48, nil, "release", nil, 0.1)
   self.elements.release.validate = validateNumber
   self.elements.releaseLabel = gui:add("text", baseX + padding * 1.5 + 48, padding + 3*padding, "Release", {})
+
+  self.elements.amplitude = gui:add("textLine", baseX + padding, padding + 4*padding, 48, nil, "amplitude", nil, 1)
+  self.elements.amplitude.validate = validateNumber
+  self.elements.amplitudeLabel = gui:add("text", baseX + padding * 1.5 + 40, padding + 4*padding, "Amplitude", {})
+  
+  local k = {} for i, v in pairs(instruments) do k[#k+1] = i end
+  table.sort(k)
+  self.elements.instrument = gui:add("dropdown", baseX + padding, padding + 5*padding, k)
+  self.elements.instrument.callback = function(i)
+    local e = self.instruments[k[i]].envelope
+    if e then
+      for i, v in pairs(self.elements) do
+        if e[i] then
+          v.text = tostring(e[i])
+        end
+      end
+    end
+  end
 end
 
 
@@ -44,20 +62,37 @@ panels.getSettings = function(self)
     decay = tonumber(self.elements.decay.text),
     sustain = tonumber(self.elements.sustain.text),
     release = tonumber(self.elements.release.text),
+    amplitude = tonumber(self.elements.amplitude.text),
+    instrument = self.elements.instrument.button.text,
   }
+end
+
+panels.setSettings = function(self, settings)
+  self.elements.attack.text     = tostring(settings.attack)
+  self.elements.decay.text      = tostring(settings.decay)
+  self.elements.sustain.text    = tostring(settings.sustain)
+  self.elements.release.text    = tostring(settings.release)
+  self.elements.amplitude.text  = tostring(settings.amplitude)
+  self.elements.instrument.button.text = settings.instrument
 end
 
 
 panels.resize = function(self, w, h)
-  self.elements.attack.x = w - self.width + padding
-  self.elements.decay.x = w - self.width + padding
-  self.elements.sustain.x = w - self.width + padding
-  self.elements.release.x = w - self.width + padding
+  local x, tx = w - self.width + padding, w - self.width + padding * 1.5 + 48
+  self.elements.attack.x     = x
+  self.elements.decay.x      = x
+  self.elements.sustain.x    = x
+  self.elements.release.x    = x
+  self.elements.amplitude.x  = x
+  self.elements.instrument.x = x
+    self.elements.instrument.button.x = x
+    self.elements.instrument.panel.x = x
 
-  self.elements.attackLabel.x = w - self.width + padding * 1.5 + 48
-  self.elements.decayLabel.x = w - self.width + padding * 1.5 + 48
-  self.elements.sustainLabel.x = w - self.width + padding * 1.5 + 48
-  self.elements.releaseLabel.x = w - self.width + padding * 1.5 + 48
+  self.elements.attackLabel.x    = tx
+  self.elements.decayLabel.x     = tx
+  self.elements.sustainLabel.x   = tx
+  self.elements.releaseLabel.x   = tx
+  self.elements.amplitudeLabel.x = tx
 end
 
 return panels

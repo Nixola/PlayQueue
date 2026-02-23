@@ -63,6 +63,7 @@ roll.new = function(n, min, max)
     release = 0.1,
     instrument = "square",
     amplitude = 0.6,
+    pan = {1, 1},
   }
 
 
@@ -134,15 +135,23 @@ end
 --    pianoRoll.notes[pianoRoll.set][#pianoRoll.notes[pianoRoll.set] + 1] = note
 
 roll.update = function(self, dt)
-  -- TODO: proper smoothing
-  self.scroll.x = (self.scroll.targetX + self.scroll.x) / 2
-  self.scroll.y = (self.scroll.targetY + self.scroll.y) / 2
+  self.scroll.x = self.scroll.x + (self.scroll.targetX - self.scroll.x) * 20 * dt 
+  self.scroll.y = self.scroll.y + (self.scroll.targetY - self.scroll.y) * 20 * dt 
 
   -- Updating play timer
   if self.playback.playing then
     self.playback.time = love.timer.getTime() - self.playback.start
     -- TODO: scroll to playback head
+    --self.scroll.targetX + wx * self.width / 3
+    local x = self.playback.time * self.scale.x * self.playback.bpm / 60
+    local limit = self.width * 3 / 4 - self.scroll.targetX
+    if x > limit then
+      self.scroll.targetX = self.scroll.targetX - self.width / 2
+    end
     -- TODO: stop if all notes have ended
+  end
+  if love.keyboard.isDown("right") then
+    self.scroll.targetX = self.scroll.targetX - 600 * dt
   end
 end
 
@@ -205,19 +214,19 @@ roll.draw = function(self, active)
       --lg.setColor(0, 1, 0, active and 6/16 or 1/16)
       local alpha = active and 6/16 or 3/16
       lg.setColor(self.color.note.mid(alpha))
-      for i, note in ipairs(self.notes[self.set]) do
+      for i, note in utils.pairs(self.notes[self.set]) do
         note:drawMid() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
 
       --lg.setColor(6/16, 11/16, 6/16, active and 6/16 or 1/16)
       lg.setColor(self.color.note.start(alpha))
-      for i, note in ipairs(self.notes[self.set]) do
+      for i, note in utils.pairs(self.notes[self.set]) do
         note:drawStart() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
 
       --lg.setColor(2/16, 4/16, 2/16, active and 6/16 or 1/16)
       lg.setColor(self.color.note.stop(alpha))
-      for i, note in ipairs(self.notes[self.set]) do
+      for i, note in utils.pairs(self.notes[self.set]) do
         note:drawEnd() -- TODO: when adding/moving notes, collision between notes should be found and each note should have an index set so that a "strip" of it is drawn and acts as button for the note
       end
       
@@ -285,8 +294,7 @@ roll.keypressed = function(self, k, kk, isRepeat)
     if k == "x" and self.copied then
       self.copied.cut = true
       local buffer = {}
-      for i = #self.notes[self.set], 1, -1 do
-        local v = self.notes[self.set][i]
+      for i, v in utils.pairs(self.notes[self.set], true) do
         for ii, vv in ipairs(self.copied) do
           if v == vv then
             --table.remove(self.notes[self.set], i)
@@ -337,7 +345,6 @@ roll.mousepressed = function(self, x, y, b)
       local nx = math.round(x / self.scale.x / self.scale.snap) * self.scale.snap
       local ny = math.floor(y / self.scale.y)
       local note = Note.new(nx, ny, self.scale)
-      --self.notes[self.set][#self.notes[self.set] + 1] = note
       self:addNotes(note)
       self.creating = note
     else
@@ -345,8 +352,7 @@ roll.mousepressed = function(self, x, y, b)
       self.selected = nil
     end
   elseif b == 2 then
-    for i = #self.notes[self.set], 1, -1 do
-      local note = self.notes[self.set][i]
+    for i, note in utils.pairs(self.notes[self.set], true) do
       local nx = note.x * self.scale.x
       local ny = note.y * self.scale.y
       local nw = note.length * self.scale.x
@@ -415,8 +421,7 @@ roll.mousemoved = function(self, x, y)
     self.selecting.list = {}
     local sx, sy, sw, sh = math.min(self.selecting.x0, self.selecting.x1), math.min(self.selecting.y0, self.selecting.y1), 
                            math.abs(self.selecting.x0 - self.selecting.x1), math.abs(self.selecting.y0 - self.selecting.y1)
-    for i = #self.notes[self.set], 1, -1 do
-      local note = self.notes[self.set][i]
+    for i, note in utils.pairs(self.notes[self.set], true) do
       local nx = note.x * self.scale.x
       local ny = note.y * self.scale.y
       local nw = note.length * self.scale.x
@@ -435,10 +440,9 @@ roll.getNotes = function(self, bpm, set)
   local notes = {}
   for set_i, v in ipairs(self.notes) do
     if (set_i == set) or (set == nil) then
-      for i, vv in ipairs(v) do
+      for i, vv in utils.pairs(v) do
         local note = {}
         note.pitch = self.max - vv.y
-        print(note.pitch)
         note.delay = vv.x * beat
         note.duration = vv.length * beat
         note.set = set_i
@@ -450,10 +454,10 @@ roll.getNotes = function(self, bpm, set)
 end
 
 
-roll.play = function(self, bpm)
+roll.play = function(self, bpm, start)
   self.playback.playing = true
   self.playback.bpm = bpm
-  self.playback.start = love.timer.getTime()
+  self.playback.start = love.timer.getTime() - start
   self.playback.time = 0
 end
 
@@ -476,6 +480,43 @@ roll.wheelmoved = function(self, wx, wy)
   else
     self.scroll.targetX = math.min(self.scroll.targetX + wx * self.width / 3, 0) -- TODO magic number
     self.scroll.targetY = math.max(math.min(self.scroll.targetY + wy * self.height / 6, 0), math.min(self.height - (self.max - self.min + 1) * self.scale.y, 0))  -- TODO magic number
+  end
+end
+
+roll.save = function(self)
+  local t = {}
+  t[1] = string.format("attack:%g,decay:%g,sustain:%g,release:%g,amplitude:%g,instrument:%s", self.settings.attack, self.settings.decay, self.settings.sustain, self.settings.release, self.settings.amplitude, self.settings.instrument)
+  for i, set in ipairs(self.notes) do
+    local tt = {}
+    for i, v in utils.pairs(set) do
+      tt[#tt + 1] = string.format("%g %g %g", v.x, v.y, v.length)
+    end
+    t[#t + 1] = table.concat(tt, ",")
+  end
+  return table.concat(t, ";")
+end
+
+roll.load = function(self, str)
+  print("Loading from string", str)
+  local header, sets = str:match("^([^;]+);(.*)$")
+  for key, value in header:gmatch("([^,:]+)%:([^,:]+)") do
+    if self.settings[key] then
+      self.settings[key] = (type(self.settings[key]) == "number") and tonumber(value) or value
+    end
+  end
+  local i = 0
+  for set in sets:gmatch("([^;]+)") do
+    i = i + 1
+    if not self.notes[i] then
+      self:newSet()
+    end
+    for note in set:gmatch("([^,]+)") do
+      local n = {} 
+      for value in note:gmatch("([^ ]+)") do
+        n[#n+1] = tonumber(value)
+      end
+      self:addNotes(Note.new(n[1], n[2], self.scale, n[3]))
+    end
   end
 end
 

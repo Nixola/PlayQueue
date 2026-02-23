@@ -15,5 +15,35 @@ utils.HSL = function(h, s, l, a)
 	end return r+m, g+m, b+m, a
 end
 
+local entrySort = function(reverse)
+    return function(a, b)
+        if reverse then a,b = b,a end
+        local ta, tb = type(a[1]), type(b[1])
+        if ta < tb then
+            return true
+        elseif ta > tb then
+            return false
+        elseif ta == "number" then
+            return a[1] < b[1]
+        else
+            return tostring(a[1]) < tostring(b[1])
+        end
+    end
+end
+
+utils.pairs = function(t, reverse)
+    local tt = {}
+    for i, v in pairs(t) do
+        tt[#tt + 1] = {i, v}
+    end
+    table.sort(tt, entrySort(reverse))
+    local i = 1
+    return function()
+        local v = tt[i]
+        if not v then return end
+        i = i + 1
+        return v[1], v[2]
+    end
+end
 
 return utils

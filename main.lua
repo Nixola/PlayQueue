@@ -41,7 +41,7 @@ function love.load(arrrgs)
     if v:match("^%-%-") then --option
       config[v:match("^%-%-(.-)$")] = true
     else --par
-      local o = arg[i-1]:match("^%-%-(.-)$")
+      local o = arrrgs[i-1]:match("^%-%-(.-)$")
       config[o] = v
     end
   end

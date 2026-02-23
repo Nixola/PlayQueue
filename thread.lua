@@ -42,7 +42,7 @@ source = channel:demand()
 buffer = channel:demand()
 
 local sampleLength = 1 / SR
-
+local soundChannels = buffer:getChannelCount()
 
 local waveforms = {}
 for i, filename in ipairs(love.filesystem.getDirectoryItems("waves")) do
@@ -181,6 +181,7 @@ while true do
         note.amplitude = event.amplitude * voice.amplitude
         note.func = waveforms[voice.waveform] --instrs[event.instrument].func
         note.effects = table.merge(voice.effects, event.effects)
+        note.pan = event.pan
         local startEffects = {}
         for i = #note.effects, 1, -1 do
           local v = note.effects[i]
@@ -260,11 +261,14 @@ while true do
 
   -- If source is running out
   if source:getFreeBufferCount() > 0 then
+    local samples = {}
 
     for i = 0, SL-1 do
       -- Synthesize her
       --               e
-      local sample = 0
+      for c = 1, soundChannels do
+        samples[c] = 0
+      end
       local notesN = 0
 
       for i, note in ipairs(notes) do
@@ -354,14 +358,21 @@ while true do
 
           local f1 = 440 * 2^((n - 69) / 12)
           note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
-          sample = sample + note.func(note.phase, f1) * a * note.amplitude
+          for c = 1, soundChannels do
+            local a = a
+            if note.pan then
+              a = a * note.pan[c]
+            end
+            samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
+          end
 
 
         end
         note.time = time
       end
-
-      buffer:setSample(i, sample / 4)--notesN)
+      for channel = 1, soundChannels do
+        buffer:setSample(i, channel, samples[channel] / 4)--notesN)
+      end
     end
 
     source:queue(buffer)

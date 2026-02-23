@@ -39,10 +39,15 @@ panels.init = function(self, gui, instruments, effects)
   self.elements.amplitude = gui:add("textLine", baseX + padding, padding + 4*padding, 48, nil, "amplitude", nil, 1)
   self.elements.amplitude.validate = validateNumber
   self.elements.amplitudeLabel = gui:add("text", baseX + padding * 1.5 + 40, padding + 4*padding, "Amplitude", {})
+
+  self.elements.panL = gui:add("textLine", baseX + padding, padding + 5*padding, 48, nil, "panL", nil, 1)
+  self.elements.panL.validate = validateNumber
+  self.elements.panR = gui:add("textLine", baseX + padding * 1.5 + 32, padding + 5*padding, 48, nil, "panR", nil, 1)
+  self.elements.panR.validate = validateNumber
   
   local k = {} for i, v in pairs(instruments) do k[#k+1] = i end
   table.sort(k)
-  self.elements.instrument = gui:add("dropdown", baseX + padding, padding + 5*padding, k)
+  self.elements.instrument = gui:add("dropdown", baseX + padding, padding + 6*padding, k)
   self.elements.instrument.callback = function(i)
     local e = self.instruments[k[i]].envelope
     if e then
@@ -64,6 +69,7 @@ panels.getSettings = function(self)
     release = tonumber(self.elements.release.text),
     amplitude = tonumber(self.elements.amplitude.text),
     instrument = self.elements.instrument.button.text,
+    pan = {tonumber(self.elements.panL.text), tonumber(self.elements.panR.text)},
   }
 end
 
@@ -74,6 +80,8 @@ panels.setSettings = function(self, settings)
   self.elements.release.text    = tostring(settings.release)
   self.elements.amplitude.text  = tostring(settings.amplitude)
   self.elements.instrument.button.text = settings.instrument
+  self.elements.panL.text = tostring(settings.pan[1])
+  self.elements.panR.text = tostring(settings.pan[2])
 end
 
 
@@ -87,6 +95,8 @@ panels.resize = function(self, w, h)
   self.elements.instrument.x = x
     self.elements.instrument.button.x = x
     self.elements.instrument.panel.x = x
+  self.elements.panL.x = x
+  self.elements.panR.x = tx
 
   self.elements.attackLabel.x    = tx
   self.elements.decayLabel.x     = tx

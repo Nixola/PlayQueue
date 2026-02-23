@@ -23,8 +23,8 @@ local panel = require "seq.panels"
 
 local SR = 44100
 local SL = 512
-local SQ = love.audio.newQueueableSource(SR,16,1, 4) -- "Queue type"...
-local SD = love.sound.newSoundData(SL,SR,16,1) -- Buffer
+local SQ = love.audio.newQueueableSource(SR,16,2, 4) -- "Queue type"...
+local SD = love.sound.newSoundData(SL,SR,16,2) -- Buffer
 
 local thread = love.thread.newThread("thread.lua")
 local channel = love.thread.newChannel()
@@ -127,6 +127,22 @@ for name, preset in pairs(instruments) do
   channel:push({action = "preset", name = name, voices = #preset})
 end
 
+for i, arg in ipairs(arg) do
+  if arg:match("%.nyxt$") then
+    local f = io.open(arg)
+    if f then
+      local r = f:read "*a"
+      f:close()
+      local data = love.data.decompress("string", "gzip", r)
+      local i = 0
+      for line in data:gmatch("([^\n]+)") do
+        i = i + 1
+        rolls[i]:load(line)
+      end
+    end
+  end
+end
+panel:setSettings(rolls[selectedRoll].settings)
 
 love.update = function(dt)
   rolls[selectedRoll]:update(dt)
@@ -150,7 +166,6 @@ local play = function(start, record)
   for i, roll in ipairs(rolls) do
     local n = roll:getNotes(bpm)
     SQ:pause()
-    print(roll.settings)
     local settings = roll.settings or panel:getSettings()
     for i, note in ipairs(n) do
       if note.delay + note.duration > start then
@@ -166,6 +181,7 @@ local play = function(start, record)
           delay = note.delay - start,
           frequency = note.pitch,
           amplitude = settings.amplitude,
+          pan = settings.pan,
           effects = {--[[]{type = "vibrato", 6, 1/6}, {type = "flanger"}--[[]]},
         }
       end
@@ -179,8 +195,7 @@ local play = function(start, record)
     }
   end
   SQ:play()
-  rolls[selectedRoll]:play(bpm)
-  rolls[selectedRoll].playback.time = start
+  rolls[selectedRoll]:play(bpm, start)
 end
 
 love.keypressed = function(k, kk, isRepeat)
@@ -194,6 +209,7 @@ love.keypressed = function(k, kk, isRepeat)
   print(selectedRoll, rolls[selectedRoll])
   modes:keypressed(k, kk, isRepeat, rolls[selectedRoll])
   local shift = love.keyboard.isDown("lshift", "rshift")
+  local ctrl = love.keyboard.isDown("lctrl", "rctrl")
   if k == "space" then
     play(0, shift)
   elseif k == "escape" then
@@ -205,6 +221,13 @@ love.keypressed = function(k, kk, isRepeat)
   elseif k == "down" and shift then
     bpm = bpm - 1
     print("BPM:", bpm)
+  elseif k == "s" and ctrl then
+    local t = {}
+    for i, roll in ipairs(rolls) do
+      t[#t+1] = roll:save()
+    end
+    local s = love.data.compress("string", "gzip", table.concat(t, "\n"), 9)
+    love.filesystem.write(("%d.nyxt"):format(os.time()), s)
   end
   rolls[selectedRoll]:keypressed(k, kk, isRepeat)
   gui:keypressed(k, kk, isRepeat)

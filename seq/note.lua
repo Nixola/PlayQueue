@@ -1,11 +1,11 @@
 local note = {}
 local mt = {__index = note}
 
-note.new = function(x, y, scale)
+note.new = function(x, y, scale, length)
   local self = setmetatable({}, mt)
   self.x = x
   self.y = y
-  self.length = 0
+  self.length = length or 0
   self.scale = scale
   return self
 end

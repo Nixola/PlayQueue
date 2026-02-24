@@ -18,7 +18,7 @@ local modes = require "seq.modes"
 
 --roll.x, roll.y = 64, 64
 
-local instruments = require "instruments"
+local instruments = require "seq.instruments"
 
 local panel = require "seq.panels"
 

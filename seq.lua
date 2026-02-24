@@ -1,4 +1,5 @@
 local utils = require "seq.utils"
+local msgpack = require "lib.msgpack"
 
 love.graphics.setBackgroundColor(2/16, 2/16, 2/16)
 
@@ -133,11 +134,12 @@ for i, arg in ipairs(arg) do
     if f then
       local r = f:read "*a"
       f:close()
-      local data = love.data.decompress("string", "gzip", r)
-      local i = 0
-      for line in data:gmatch("([^\n]+)") do
-        i = i + 1
-        rolls[i]:load(line)
+      local content = love.data.decompress("string", "gzip", r)
+      local data = msgpack.unpack(content)
+      bpm = data.bpm or bpm
+      guiElements.bpm.text = tostring(bpm)
+      for i, v in ipairs(data) do
+        rolls[i]:import(v)
       end
     end
   end
@@ -222,11 +224,11 @@ love.keypressed = function(k, kk, isRepeat)
     bpm = bpm - 1
     print("BPM:", bpm)
   elseif k == "s" and ctrl then
-    local t = {}
+    local t = {bpm = bpm}
     for i, roll in ipairs(rolls) do
-      t[#t+1] = roll:save()
+      t[#t+1] = roll:export()
     end
-    local s = love.data.compress("string", "gzip", table.concat(t, "\n"), 9)
+    local s = love.data.compress("string", "gzip", msgpack.pack(t), 9)
     love.filesystem.write(("%d.nyxt"):format(os.time()), s)
   end
   rolls[selectedRoll]:keypressed(k, kk, isRepeat)

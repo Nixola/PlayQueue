@@ -1,5 +1,6 @@
 local Note = require "seq.note"
 local utils = require "seq.utils"
+local msgpack = require "lib.msgpack"
 
 local color = function(t) t = t or {}; return setmetatable(t, {__call = function(self, a) return self[1], self[2], self[3], a end}) end
 
@@ -146,7 +147,10 @@ roll.update = function(self, dt)
     local x = self.playback.time * self.scale.x * self.playback.bpm / 60
     local limit = self.width * 3 / 4 - self.scroll.targetX
     if x > limit then
-      self.scroll.targetX = self.scroll.targetX - self.width / 2
+      self.scroll.targetX = -x + self.width * 3/ 4
+    end
+    if x + self.scroll.targetX < 0 then
+      self.scroll.targetX = -x
     end
     -- TODO: stop if all notes have ended
   end
@@ -483,8 +487,8 @@ roll.wheelmoved = function(self, wx, wy)
   end
 end
 
-roll.save = function(self)
-  local t = {}
+roll.export = function(self)
+  --[[local t = {}
   t[1] = string.format("attack:%g,decay:%g,sustain:%g,release:%g,amplitude:%g,instrument:%s", self.settings.attack, self.settings.decay, self.settings.sustain, self.settings.release, self.settings.amplitude, self.settings.instrument)
   for i, set in ipairs(self.notes) do
     local tt = {}
@@ -493,10 +497,31 @@ roll.save = function(self)
     end
     t[#t + 1] = table.concat(tt, ",")
   end
-  return table.concat(t, ";")
+  return table.concat(t, ";")--]]
+  local notes = {}
+  for i, v in ipairs(self.notes) do
+    notes[i] = {}
+    for ii, note in utils.pairs(v) do
+      table.insert(notes[i], {x = note.x, y = note.y, length = note.length})
+    end
+  end
+  return {settings = self.settings, notes = self.notes}
+end
+
+roll.import = function(self, data)
+  for i, v in pairs(data.settings) do
+    self.settings[i] = v
+  end
+  for i, set in ipairs(data.notes) do
+    if not self.notes[i] then self:newSet() end
+    for ii, note in utils.pairs(set) do
+      self:addNotes(Note.new(note.x, note.y, self.scale, note.length))
+    end
+  end
 end
 
 roll.load = function(self, str)
+  ---[[
   print("Loading from string", str)
   local header, sets = str:match("^([^;]+);(.*)$")
   for key, value in header:gmatch("([^,:]+)%:([^,:]+)") do
@@ -517,7 +542,7 @@ roll.load = function(self, str)
       end
       self:addNotes(Note.new(n[1], n[2], self.scale, n[3]))
     end
-  end
+  end--]]
 end
 
 return roll

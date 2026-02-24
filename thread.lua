@@ -177,6 +177,7 @@ while true do
         note.delay = event.delay or 0
         note.ttime = -note.delay
         note.frequency = event.frequency + voice.keyshift
+        note.f1 = 440 * 2^((note.frequency - 69) / 12)
         note.voice = voice
         note.amplitude = event.amplitude * voice.amplitude
         note.func = waveforms[voice.waveform] --instrs[event.instrument].func
@@ -255,7 +256,7 @@ while true do
       end
       IDs = {}
     end
-
+    -- TODO: add a timesync event to allow notes to be pushed closer to real-time against a reference timeframe
     event = channel:pop()
   end
 
@@ -276,6 +277,7 @@ while true do
         note.ttime = note.ttime + sampleLength -- note.ttime is the total time the note has lived
 
         local a = 0
+        local calc = true
 
         if note.duration and note.ttime > note.duration and not (note.state == "release" or note.state == "end") then
           note.state = "release"
@@ -290,6 +292,7 @@ while true do
             time = note.ttime
           else
             a = 0
+            calc = false
           end
         end
 
@@ -331,6 +334,7 @@ while true do
             end
             --notes[i] = nil
             note.state = "end"
+            calc = false
             a = 0
           else
             local tt = time / note.release
@@ -339,7 +343,7 @@ while true do
           end
         end
 
-        if not (note.state == "end" or note.state == "delay") then -- entirely skip over processing dead notes
+        if calc --[[and not (note.state == "end" or note.state == "delay")]] then -- entirely skip over processing dead notes
 
           note.a = a -- used when releasing a note before sustain kicks in
 
@@ -355,8 +359,7 @@ while true do
             phaseShift = phaseShift * (effs[i].phaseShift or 1)
           end
 
-
-          local f1 = 440 * 2^((n - 69) / 12)
+          local f1 = note.f1 -- 440 * 2^((n - 69) / 12)
           note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
           for c = 1, soundChannels do
             local a = a
@@ -365,7 +368,6 @@ while true do
             end
             samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
           end
-
 
         end
         note.time = time

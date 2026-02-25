@@ -128,23 +128,36 @@ for name, preset in pairs(instruments) do
   channel:push({action = "preset", name = name, voices = #preset})
 end
 
-for i, arg in ipairs(arg) do
-  if arg:match("%.nyxt$") then
-    local f = io.open(arg)
-    if f then
-      local r = f:read "*a"
-      f:close()
-      local content = love.data.decompress("string", "gzip", r)
-      local data = msgpack.unpack(content)
-      bpm = data.bpm or bpm
-      guiElements.bpm.text = tostring(bpm)
-      for i, v in ipairs(data) do
-        rolls[i]:import(v)
-      end
-    end
+local load = function(str)
+  local data = msgpack.unpack(love.data.decompress("string", "gzip", str))
+  bpm = data.bpm or bpm
+  guiElements.bpm.text = tostring(bpm)
+  for i, v in ipairs(data) do
+    local roll = rolls[i]
+    roll.notes = {}
+    roll:newSet()
+    roll:import(v)
+  end
+  panel:setSettings(rolls[selectedRoll].settings)
+end
+
+local openFile
+if type(config.seq) == "string" then
+  local f = io.open(config.seq)
+  if f then
+    local r = f:read "*a"
+    f:close()
+    openFile = config.seq
+    load(r)
   end
 end
-panel:setSettings(rolls[selectedRoll].settings)
+
+love.filedropped = function(file)
+  openFile = file
+  file:open("r")
+  load(file:read())
+  file:close()
+end
 
 love.update = function(dt)
   rolls[selectedRoll]:update(dt)
@@ -229,7 +242,23 @@ love.keypressed = function(k, kk, isRepeat)
       t[#t+1] = roll:export()
     end
     local s = love.data.compress("string", "gzip", msgpack.pack(t), 9)
-    love.filesystem.write(("%d.nyxt"):format(os.time()), s)
+    local file
+    if shift or (not openFile) then -- Save to new file
+      openFile = ("%s/%d.nyxt"):format(love.filesystem.getSaveDirectory(), os.time())
+      print(openFile)
+    end
+      --file = (love.filesystem.openFile or love.filesystem.newFile)(("%d.nyxt"):format(os.time()), "w")
+    if type(openFile) == "string" then
+      print("File is string")
+      file = io.open(openFile, "w")
+    else
+      print("File is dropped")
+      file = openFile
+      file:open("w")
+    end
+    file:write(s)
+    file:close()
+    --love.filesystem.write(("%d.nyxt"):format(os.time()), s)
   end
   rolls[selectedRoll]:keypressed(k, kk, isRepeat)
   gui:keypressed(k, kk, isRepeat)

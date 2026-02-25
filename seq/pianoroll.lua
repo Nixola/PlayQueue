@@ -55,8 +55,10 @@ roll.new = function(n, min, max)
     y = 24,    -- Pixels per row
     snap = 1,  -- quarters per snap
   }
-  self.notes = {{}}
-  self.set = 1
+  --self.notes = {{}}
+  self.notes = {}
+  self.set = 0
+  self:newSet()
   self.settings = {
     attack  = 0.05,
     decay   = 0.1,

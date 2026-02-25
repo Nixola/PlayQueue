@@ -121,12 +121,31 @@ IDs = {}
 
 --p, d, t = 0.0, (2*math.pi)/SR, 1/SR
 
+local searchNote
+searchNote = function(ttime, start, stop)
+  start = start or 1
+  stop = stop or #notes
+  local middle = math.floor((start + stop) / 2)
+  if (start == middle) or (stop == middle) then
+    return middle + 1
+  end
+  local note = notes[middle]
+  if note.ttime < ttime then
+    return searchNote(ttime, start, middle)
+  elseif note.ttime > ttime then
+    return searchNote(ttime, middle, stop)
+  elseif note.ttime == ttime then
+    return middle + 1
+  end
+end
+
 local addNote = function(note, id)
   note.state = note.delay > 0 and "delay" or "attack"
   if id then
     IDs[id][#IDs[id] + 1] = note
   end
-  notes[#notes + 1] = note
+  local index = --[=[]] #notes + 1 --]=] searchNote(note.ttime)
+  table.insert(notes, index, note)
 end
 
 assemblePreset = function(preset)
@@ -261,9 +280,9 @@ while true do
   end
 
   -- If source is running out
-  if source:getFreeBufferCount() > 0 then
+  local freeBuffers = source:getFreeBufferCount()
+  if freeBuffers > 0 then
     local samples = {}
-
     for i = 0, SL-1 do
       -- Synthesize her
       --               e

@@ -2,7 +2,7 @@ local layouts = require "layouts"
 local UI, ui = require "ui"
 require "run"
 
-local config = {}
+config = {}
 local lastRandomKey
 
 local instruments = require "instruments"
@@ -33,15 +33,12 @@ end
 
 function love.load(arrrgs)
 
-  for i, v in pairs(arg) do print(i, v) end
-  print "arr"
-  for i, v in pairs(arrrgs) do print(i, v) end
-
   for i, v in ipairs(arrrgs) do
     if v:match("^%-%-") then --option
       config[v:match("^%-%-(.-)$")] = true
     else --par
       local o = arrrgs[i-1]:match("^%-%-(.-)$")
+      if not o then error("Non-option argument provided") end
       config[o] = v
     end
   end

@@ -140,7 +140,27 @@ searchNote = function(ttime, start, stop)
 end
 
 local addNote = function(note, id)
-  note.state = note.delay > 0 and "delay" or "attack"
+  local ttime = note.ttime
+  local tattack = note.attack
+  local tdecay = tattack + note.decay
+  local tsustain = note.duration
+  local trelease = tsustain + note.release
+  if ttime < 0 then
+    note.state = "delay"
+  elseif ttime < tattack then
+    note.state = "attack"
+    note.time = ttime
+  elseif ttime < tdecay then
+    note.state = "decay"
+    note.time = ttime - tattack
+  elseif ttime < tsustain then
+    note.state = "sustain"
+    note.time = ttime - tdecay
+  elseif ttime < trelease then
+    note.state = "release"
+    note.time = ttime - tsustain
+  end
+  if not note.state then return end
   if id then
     IDs[id][#IDs[id] + 1] = note
   end
@@ -186,7 +206,6 @@ while true do
       for i, voice in ipairs(instrs[event.instrument]) do
         local note = {}
         note.id = id
-        note.time = 0
         note.phase = 0
         note.attack = event.attack
         note.decay = event.decay
@@ -195,6 +214,7 @@ while true do
         note.duration = event.duration
         note.delay = event.delay or 0
         note.ttime = -note.delay
+        note.time = math.min(0, note.ttime)
         note.frequency = event.frequency + voice.keyshift
         note.f1 = 440 * 2^((note.frequency - 69) / 12)
         note.voice = voice
@@ -314,80 +334,82 @@ while true do
             calc = false
           end
         end
+        
+        if calc then
+          if note.state == "attack" then
+            if time > note.attack then
+              note.state = "decay"
+              time = time - note.attack
+            else
+              a = time / note.attack
+              notesN = notesN + 1
+            end
+          end
 
-        if note.state == "attack" then
-          if time > note.attack then
-            note.state = "decay"
-            time = time - note.attack
-          else
-            a = time / note.attack
+          if note.state == "decay" then
+            if time > note.decay then
+              note.state = "sustain"
+              time = 0
+            else
+              local tt = time / note.decay
+              a = 1 * (1-tt) + note.sustain * tt
+              notesN = notesN + 1
+            end
+          end
+
+          if note.state == "sustain" then
+            a = note.sustain
             notesN = notesN + 1
           end
-        end
 
-        if note.state == "decay" then
-          if time > note.decay then
-            note.state = "sustain"
-            time = 0
-          else
-            local tt = time / note.decay
-            a = 1 * (1-tt) + note.sustain * tt
-            notesN = notesN + 1
-          end
-        end
-
-        if note.state == "sustain" then
-          a = note.sustain
-          notesN = notesN + 1
-        end
-
-        if note.state == "release" then
-          if time > note.release then
-            if note.id then
-              for ii, vv in ipairs(IDs[note.id]) do
-                if vv == note then
-                  IDs[note.id][ii] = nil
-                  break
+          if note.state == "release" then
+            if time > note.release then
+              if note.id then
+                for ii, vv in ipairs(IDs[note.id]) do
+                  if vv == note then
+                    IDs[note.id][ii] = nil
+                    break
+                  end
                 end
               end
+              --notes[i] = nil
+              note.state = "end"
+              calc = false
+              a = 0
+            else
+              local tt = time / note.release
+              a = note.sustain * (1-tt)
+              notesN = notesN + 1
             end
-            --notes[i] = nil
-            note.state = "end"
-            calc = false
-            a = 0
-          else
-            local tt = time / note.release
-            a = note.sustain * (1-tt)
-            notesN = notesN + 1
-          end
-        end
-
-        if calc --[[and not (note.state == "end" or note.state == "delay")]] then -- entirely skip over processing dead notes
-
-          note.a = a -- used when releasing a note before sustain kicks in
-
-          local n = note.frequency
-
-          local phaseShift = 1
-
-          local effs = {}
-          for i, v in ipairs(note.effects) do
-            effs[i] = v.effect:continuous(note, v)
-            a = a * (effs[i].amplitude or 1)
-            n = n * (effs[i].keyShift or 1)
-            phaseShift = phaseShift * (effs[i].phaseShift or 1)
           end
 
-          local f1 = note.f1 -- 440 * 2^((n - 69) / 12)
-          note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
-          for c = 1, soundChannels do
-            local a = a
-            if note.pan then
-              a = a * note.pan[c]
+          if calc --[[and not (note.state == "end" or note.state == "delay")]] then -- entirely skip over processing dead notes
+
+            note.a = a -- used when releasing a note before sustain kicks in
+
+            local n = note.frequency
+
+            local phaseShift = 1
+
+            local effs = {}
+            for i, v in ipairs(note.effects) do
+              effs[i] = v.effect:continuous(note, v)
+              a = a * (effs[i].amplitude or 1)
+              n = n * (effs[i].keyShift or 1)
+              phaseShift = phaseShift * (effs[i].phaseShift or 1)
             end
-            samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
-          end
 
+            local f1 = note.f1 -- 440 * 2^((n - 69) / 12)
+            note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
+            for c = 1, soundChannels do
+              local a = a
+              if note.pan then
+                a = a * note.pan[c]
+              end
+              samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
+            end
+
+          end
         end
         note.time = time
       end

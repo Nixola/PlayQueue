@@ -183,7 +183,7 @@ local play = function(start, record)
     SQ:pause()
     local settings = roll.settings or panel:getSettings()
     for i, note in ipairs(n) do
-      if note.delay + note.duration > start then
+      if note.delay + note.duration + settings.release > start then
         channel:push{
           action = "start",
           --id = i,

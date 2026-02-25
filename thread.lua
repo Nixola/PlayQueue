@@ -422,8 +422,9 @@ while true do
       channel:push{action="stop"}
       print("Recording stopped automatically")
     end
+  else
+    love.timer.sleep(0.001)
   end
-  love.timer.sleep(0.001)
 end
 
 --[[

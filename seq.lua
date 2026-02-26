@@ -162,6 +162,9 @@ end
 love.update = function(dt)
   rolls[selectedRoll]:update(dt)
   gui:update(dt)
+  if quit and not thread:isRunning() then
+    love.event.quit()
+  end
 end
 
 
@@ -294,6 +297,13 @@ love.mousepressed = function(x, y, b)
     local start = (x - rolls[selectedRoll].x - rolls[selectedRoll].scroll.x) / rolls[selectedRoll].scale.x / bpm * 60
     play(start)
   end
+end
+
+love.quit = function()
+  channel:push { action = "quit" }
+  quit = true
+  print("Quitting...")
+  return thread:isRunning()
 end
 
 love.mousemoved = function(x, y, dx, dy)

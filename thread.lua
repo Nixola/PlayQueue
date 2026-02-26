@@ -1,3 +1,7 @@
+--PROF_CAPTURE=true
+local prof = require "jprof"
+prof.connect(true)
+
 local channel, presets = ...
 
 local recording, startRecording, stopRecording, autoStop
@@ -185,10 +189,13 @@ assemblePreset = function(preset)
   instrs[preset.name] = preset
 end
 
-
-while true do
+local run = true
+local bucket = notes
+while run do
 
   -- Receive and handle events
+  prof.push("frame")
+  prof.push("event input")
   local event = channel:pop()
   while event do
     local action = event.action
@@ -294,14 +301,18 @@ while true do
         v.state = "end"
       end
       IDs = {}
+    elseif action == "quit" then
+      run = false
     end
     -- TODO: add a timesync event to allow notes to be pushed closer to real-time against a reference timeframe
     event = channel:pop()
   end
+  prof.pop("event input")
 
   -- If source is running out
   local freeBuffers = source:getFreeBufferCount()
   if freeBuffers > 0 then
+    prof.push("synthesize her")
     local samples = {}
     for i = 0, SL-1 do
       -- Synthesize her
@@ -310,15 +321,14 @@ while true do
         samples[c] = 0
       end
       local notesN = 0
-
-      for i, note in ipairs(notes) do
+      for i, v in ipairs(notes) do v.ttime = v.ttime + sampleLength end
+      for i, note in ipairs(bucket) do
         local time = note.time + sampleLength  -- time and note.time are the elapsed time since the last state change
-        note.ttime = note.ttime + sampleLength -- note.ttime is the total time the note has lived
+        local ttime = note.ttime -- + sampleLength -- note.ttime is the total time the note has lived
 
         local a = 0
         local calc = true
-
-        if note.duration and note.ttime > note.duration and not (note.state == "release" or note.state == "end") then
+        if note.duration and ttime > note.duration and not (note.state == "release" or note.state == "end") then
           note.state = "release"
           note.time = 0
           time = 0
@@ -326,9 +336,9 @@ while true do
 
         if note.state == "delay" then
           --if time > note.delay then
-          if note.ttime > 0 then
+          if ttime > 0 then
             note.state = "attack"
-            time = note.ttime
+            time = ttime
           else
             a = 0
             calc = false
@@ -384,7 +394,7 @@ while true do
           end
 
           if calc --[[and not (note.state == "end" or note.state == "delay")]] then -- entirely skip over processing dead notes
-
+            prof.push("synth")
             note.a = a -- used when releasing a note before sustain kicks in
 
             local n = note.frequency
@@ -408,7 +418,7 @@ while true do
               end
               samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
             end
-
+            prof.pop("synth")
           end
         end
         note.time = time
@@ -434,21 +444,31 @@ while true do
       writerChannel:push(buffer)
     end
     -- Remove dead notes; best to do it when a buffer's just been pushed
+    bucket = {}
     for i = #notes, 1, -1 do
       local note = notes[i]
       if note.state == "end" then
         table.remove(notes, i)
+      elseif note.state == "delay" then
+        local start = -note.ttime
+        if start < SL * sampleLength then
+          bucket[#bucket + 1] = note
+        end
+      else
+        bucket[#bucket + 1] = note
       end
     end
     if recording and autoStop and #notes == 0 then
       channel:push{action="stop"}
       print("Recording stopped automatically")
     end
+  prof.pop("synthesize her")
   else
     love.timer.sleep(0.001)
   end
+  prof.pop("frame")
 end
-
+prof.write("capture.jprof")
 --[[
 local sin = function(freqtable,ip)
   local phase, increment = (ip or 0), (2*math.pi)/8000/2

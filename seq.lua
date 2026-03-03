@@ -22,9 +22,9 @@ local instruments = require "seq.instruments"
 
 local panel = require "seq.panels"
 
-local SR = 44100
-local SL = 512
-local SQ = love.audio.newQueueableSource(SR,16,2, 4) -- "Queue type"...
+local SR = 48000
+local SL = 256
+local SQ = love.audio.newQueueableSource(SR,16,2, 3) -- "Queue type"...
 local SD = love.sound.newSoundData(SL,SR,16,2) -- Buffer
 
 local thread = love.thread.newThread("thread.lua")
@@ -263,6 +263,7 @@ love.keypressed = function(k, kk, isRepeat)
     file:close()
     --love.filesystem.write(("%d.nyxt"):format(os.time()), s)
   end
+
   rolls[selectedRoll]:keypressed(k, kk, isRepeat)
   gui:keypressed(k, kk, isRepeat)
 end

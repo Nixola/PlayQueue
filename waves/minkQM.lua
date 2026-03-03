@@ -1,5 +1,6 @@
+local floor = math.floor
 local function minkowskiQM(x)
-  local p = math.floor(x)
+  local p = floor(x)
   local q,r,s,m,n,d,y = 1, p + 1, 1, 0, 0, 1.0, p
   -- out of range: ?(x) =~ x
   if x < p or ((p < 0 and r > 0) or (p >= 0 and r <= 0)) then return x end

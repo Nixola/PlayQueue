@@ -42,11 +42,11 @@ function love.load(arrrgs)
       config[o] = v
     end
   end
-  if config.seq or (arg[1] and arg[1]:match("^seq.*")) then
+--  if config.seq or (arg[1] and arg[1]:match("^seq.*")) then
     require "seq"
     return
-  end
-
+  --end
+--[=[
   ui = UI.new("ui.png")
 
   SR = tonumber(config.samplerate) or 44100
@@ -137,7 +137,7 @@ function love.load(arrrgs)
   end
 
   love.keyboard.setKeyRepeat(true)
-
+--]=]
 end
 
 

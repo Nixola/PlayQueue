@@ -176,11 +176,12 @@ love.draw = function()
   modes:draw()
 end
 
-
+local sync = 0
 local play = function(start, record)
   start = start or 0
   channel:push{action = "clear"}
   rolls[selectedRoll].settings = panel:getSettings()
+  channel:push{action = "sync", id = sync}
   for i, roll in ipairs(rolls) do
     local n = roll:getNotes(bpm)
     SQ:pause()
@@ -198,8 +199,10 @@ local play = function(start, record)
           duration = note.duration,
           delay = note.delay - start,
           frequency = note.pitch,
+          --bend = {0,12, 0.1,0, 0.9,0, 1,36},
           amplitude = settings.amplitude,
           pan = settings.pan,
+          sync = sync,
           effects = {--[[]{type = "vibrato", 6, 1/6}, {type = "flanger"}--[[]]},
         }
       end
@@ -212,6 +215,7 @@ local play = function(start, record)
       stop = "auto"
     }
   end
+  sync = sync + 1
   SQ:play()
   rolls[selectedRoll]:play(bpm, start)
 end
@@ -224,7 +228,7 @@ love.keypressed = function(k, kk, isRepeat)
       return
     end
   end
-  print(selectedRoll, rolls[selectedRoll])
+  
   modes:keypressed(k, kk, isRepeat, rolls[selectedRoll])
   local shift = love.keyboard.isDown("lshift", "rshift")
   local ctrl = love.keyboard.isDown("lctrl", "rctrl")

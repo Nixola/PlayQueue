@@ -35,6 +35,18 @@ table.clone = function(t)
   return table.merge({}, t)
 end
 
+local lerp = function(points, t)
+  for i = 1, #points, 2 do
+    local x1, y1, x2, y2 = points[i], points[i+1], points[i+2], points[i+3]
+    if x1 <= t and x2 and x2 >= t then
+      local dx = x2 - x1
+      local tt = (t - x1) / dx
+      return y1 * (1 - tt) + y2 * tt
+    end
+  end
+  return points[#points]
+end
+
 require "love.sound"
 require "love.audio"
 require "love.timer"
@@ -47,6 +59,11 @@ buffer = channel:demand()
 
 local sampleLength = 1 / SR
 local soundChannels = buffer:getChannelCount()
+
+local bufferArray = {}
+for i = 0, SL-1 do
+  bufferArray[i] = {}
+end
 
 local waveforms = {}
 for i, filename in ipairs(love.filesystem.getDirectoryItems("waves")) do
@@ -190,7 +207,7 @@ assemblePreset = function(preset)
 end
 
 local run = true
-local bucket = notes
+local syncs = {}
 while run do
 
   -- Receive and handle events
@@ -209,7 +226,8 @@ while run do
       if id then
         IDs[id] = IDs[id] and error("Starting note already exists") or {}
       end
-
+      local sync = syncs[event.sync]
+      local baseDelay = sync and sync.time or 0
       for i, voice in ipairs(instrs[event.instrument]) do
         local note = {}
         note.id = id
@@ -219,11 +237,12 @@ while run do
         note.sustain = event.sustain
         note.release = event.release
         note.duration = event.duration
-        note.delay = event.delay or 0
+        note.delay = event.delay and (event.delay - baseDelay) or 0
         note.ttime = -note.delay
         note.time = math.min(0, note.ttime)
         note.frequency = event.frequency + voice.keyshift
         note.f1 = 440 * 2^((note.frequency - 69) / 12)
+        note.bend = event.bend
         note.voice = voice
         note.amplitude = event.amplitude * voice.amplitude
         note.func = waveforms[voice.waveform] --instrs[event.instrument].func
@@ -250,19 +269,21 @@ while run do
         addNote(note, id)
       end
     elseif action == "change" then
-      for i, note in ipairs(IDs[event.id]) do
-        note.attack = event.attack or note.attack
-        note.decay = event.decay or note.decay
-        note.sustain = event.sustain or note.sustain
-        note.release = event.release or note.release
-        note.duration = event.duration or note.duration
-        if event.delay then
-          note.ttime = note.ttime + note.delay - event.delay
-          note.delay = event.delay
+      if IDs[event.id] then
+        for i, note in ipairs(IDs[event.id]) do
+          note.attack = event.attack or note.attack
+          note.decay = event.decay or note.decay
+          note.sustain = event.sustain or note.sustain
+          note.release = event.release or note.release
+          note.duration = event.duration or note.duration
+          if event.delay then
+            note.ttime = note.ttime + note.delay - event.delay
+            note.delay = event.delay
+          end
+          note.frequency = event.frequency and (event.frequency + note.voice.keyshift) or note.frequency
+          note.amplitude = event.amplitude and (event.amplitude * note.voice.amplitude) or note.amplitude
+          note.effects = event.effects and table.merge(note.voice.effects, event.effects) or note.effects
         end
-        note.frequency = event.frequency and (event.frequency + note.voice.keyshift) or note.frequency
-        note.amplitude = event.amplitude and (event.amplitude * note.voice.amplitude) or note.amplitude
-        note.effects = event.effects and table.merge(note.voice.effects, event.effects) or note.effects
       end
     elseif action == "release" then
       if not IDs[event.id] then
@@ -301,10 +322,16 @@ while run do
         v.state = "end"
       end
       IDs = {}
+      syncs = {}
+    elseif action == "sync" then
+      local sync = {
+        id = event.id,
+        time = 0,
+      }
+      syncs[sync.id] = sync
     elseif action == "quit" then
       run = false
     end
-    -- TODO: add a timesync event to allow notes to be pushed closer to real-time against a reference timeframe
     event = channel:pop()
   end
   prof.pop("event input")
@@ -313,123 +340,151 @@ while run do
   local freeBuffers = source:getFreeBufferCount()
   if freeBuffers > 0 then
     prof.push("synthesize her")
-    local samples = {}
+    for i, v in pairs(syncs) do
+      v.time = v.time + SL * sampleLength
+    end
+    local bufferArray = bufferArray
     for i = 0, SL-1 do
-      -- Synthesize her
-      --               e
       for c = 1, soundChannels do
-        samples[c] = 0
+        bufferArray[i][c] = 0
       end
-      local notesN = 0
-      for i, v in ipairs(notes) do v.ttime = v.ttime + sampleLength end
-      for i, note in ipairs(bucket) do
-        local time = note.time + sampleLength  -- time and note.time are the elapsed time since the last state change
-        local ttime = note.ttime -- + sampleLength -- note.ttime is the total time the note has lived
+    end
 
+    local last = 0
+
+    for i, v in ipairs(notes) do
+      local time = v.time
+      local ttime = v.ttime
+      local duration = v.duration
+      local state = v.state
+      local attack, decay, sustain, release = v.attack, v.decay, v.sustain, v.release
+      local amplitude = v.amplitude
+      local effects, pan = v.effects, v.pan
+      --local f1 = v.f1
+      local id = v.id
+      local frequency, phase = v.frequency, v.phase
+      local bend = v.bend
+      print(frequency, ttime, duration)
+      if bend then
+        print(frequency, ttime, duration)
+        frequency = frequency + lerp(bend, ttime / duration)
+      end
+      local func = v.func
+      local f1 = 440 * 2^((frequency - 69) / 12)
+
+      if -ttime > SL * sampleLength then
+        break
+      end
+      last = i
+
+      for i = 0, SL-1 do
+        time = time + sampleLength
+        ttime = ttime + sampleLength
+        f1 = 440 * 2^((frequency - 69) / 12)
         local a = 0
         local calc = true
-        if note.duration and ttime > note.duration and not (note.state == "release" or note.state == "end") then
-          note.state = "release"
-          note.time = 0
+        if duration and ttime > duration and not (state == "release" or state == "end") then
+          state = "release"
           time = 0
         end
 
-        if note.state == "delay" then
-          --if time > note.delay then
+        if state == "delay" then
           if ttime > 0 then
-            note.state = "attack"
+            state = "attack"
             time = ttime
           else
             a = 0
             calc = false
           end
         end
-        
+
         if calc then
-          if note.state == "attack" then
-            if time > note.attack then
-              note.state = "decay"
-              time = time - note.attack
+          if state == "attack" then
+            if time > attack then
+              state = "decay"
+              time = time - attack
             else
-              a = time / note.attack
-              notesN = notesN + 1
+              a = time / attack
             end
           end
-
-          if note.state == "decay" then
-            if time > note.decay then
-              note.state = "sustain"
+          
+          if state == "decay" then
+            if time > decay then
+              state = "sustain"
               time = 0
             else
-              local tt = time / note.decay
-              a = 1 * (1-tt) + note.sustain * tt
-              notesN = notesN + 1
+              local tt = time / decay
+              a = 1 * (1 - tt) + sustain * tt
             end
           end
 
-          if note.state == "sustain" then
-            a = note.sustain
-            notesN = notesN + 1
+          if state == "sustain" then
+            a = sustain
           end
 
-          if note.state == "release" then
-            if time > note.release then
-              if note.id then
-                for ii, vv in ipairs(IDs[note.id]) do
-                  if vv == note then
-                    IDs[note.id][ii] = nil
+          if state == "release" then
+            if time > release then
+              if id then
+                for ii, vv in ipairs(IDs[id]) do
+                  if vv == v then
+                    IDs[id][ii] = nil
                     break
                   end
                 end
               end
-              --notes[i] = nil
-              note.state = "end"
+              state = "end"
               calc = false
               a = 0
             else
-              local tt = time / note.release
-              a = note.sustain * (1-tt)
-              notesN = notesN + 1
+              local tt = time / release
+              a = sustain * (1-tt)
             end
           end
 
-          if calc --[[and not (note.state == "end" or note.state == "delay")]] then -- entirely skip over processing dead notes
-            prof.push("synth")
-            note.a = a -- used when releasing a note before sustain kicks in
-
-            local n = note.frequency
-
+          if calc then
+            local n = frequency
             local phaseShift = 1
-
             local effs = {}
-            for i, v in ipairs(note.effects) do
-              effs[i] = v.effect:continuous(note, v)
+            for i, v in ipairs(effects) do
+              effs[i] = v.effect:continuous(ttime, v)
               a = a * (effs[i].amplitude or 1)
               n = n * (effs[i].keyShift or 1)
               phaseShift = phaseShift * (effs[i].phaseShift or 1)
             end
-
-            local f1 = note.f1 -- 440 * 2^((n - 69) / 12)
-            note.phase = note.phase + sampleLength * phaseShift -- f2 / f1
+            phase = phase + sampleLength * phaseShift
             for c = 1, soundChannels do
               local a = a
-              if note.pan then
-                a = a * note.pan[c]
+              if pan then
+                a = a * pan[c]
               end
-              samples[c] = samples[c] + note.func(note.phase, f1) * a * note.amplitude
+              bufferArray[i][c] = bufferArray[i][c] + func(phase, f1) * a * amplitude
             end
-            prof.pop("synth")
           end
         end
-        note.time = time
       end
-      for channel = 1, soundChannels do
-        buffer:setSample(i, channel, samples[channel] / 4)--notesN)
-      end
+      v.time = time
+      v.ttime = ttime
+      v.a = a
+      v.state = state
+      v.phase = phase
     end
 
+    for i = 0, SL-1 do
+      for c = 1, soundChannels do
+        buffer:setSample(i, c, bufferArray[i][c] / 4)
+      end
+    end
+    prof.pop("synthesize her")
     source:queue(buffer)
     source:play()
+    prof.push("update")
+    for i = last + 1, #notes do
+      local v = notes[i]
+      v.time = v.time + SL * sampleLength
+      v.ttime = v.ttime + SL * sampleLength
+    end
+    prof.pop("update")
+    prof.push("record")
     if startRecording then
       writer:start(writerChannel)
       startRecording = false
@@ -443,26 +498,20 @@ while run do
     if recording then
       writerChannel:push(buffer)
     end
+    prof.pop("record")
     -- Remove dead notes; best to do it when a buffer's just been pushed
-    bucket = {}
+    prof.push("cleanup")
     for i = #notes, 1, -1 do
       local note = notes[i]
       if note.state == "end" then
         table.remove(notes, i)
-      elseif note.state == "delay" then
-        local start = -note.ttime
-        if start < SL * sampleLength then
-          bucket[#bucket + 1] = note
-        end
-      else
-        bucket[#bucket + 1] = note
       end
     end
+    prof.pop("cleanup")
     if recording and autoStop and #notes == 0 then
       channel:push{action="stop"}
       print("Recording stopped automatically")
     end
-  prof.pop("synthesize her")
   else
     love.timer.sleep(0.001)
   end
